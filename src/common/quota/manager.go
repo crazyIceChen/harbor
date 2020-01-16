@@ -15,7 +15,10 @@
 package quota
 
 import (
+	"errors"
 	"fmt"
+	"github.com/goharbor/harbor/src/common"
+	"github.com/goharbor/harbor/src/common/config"
 	"time"
 
 	"github.com/astaxie/beego/orm"
@@ -138,8 +141,41 @@ func (m *Manager) updateUsage(o orm.Ormer, resources types.ResourceList,
 		return fmt.Errorf("quota usage is negative for resource(s): %s", prettyPrintResourceNames(negativeUsed))
 	}
 
-	if err := isSafe(hardLimits, used, newUsed, skipOverflow); err != nil {
-		return err
+	//获取全局quota约束
+	configLimit := make(ResourceList)
+	c := config.NewDBCfgManager()
+	allConfigs := c.GetAll()
+	if len(allConfigs) == 0 {
+		return errors.New("all config error")
+	} else {
+		configLimitCount, ok := allConfigs[common.CountPerProject]
+		if !ok {
+			log.Warning("allConfigs count_per_project error")
+			return errors.New("allConfigs count_per_project error")
+		}
+		log.Info("count per project is ", configLimitCount)
+		configLimit[ResourceCount] = configLimitCount.(int64)
+
+		configLimitSize, ok := allConfigs[common.StoragePerProject]
+		if !ok {
+			configLimit[ResourceStorage] = configLimitSize.(int64)
+			log.Warning("allConfigs count_per_project error")
+			return errors.New("allConfigs storage_per_project error")
+		}
+		log.Info("size per project is ", configLimitSize)
+		configLimit[ResourceStorage] = configLimitSize.(int64)
+
+	}
+	//------------------------
+
+	if configLimit[ResourceCount] == -1 && configLimit[ResourceStorage] == -1 {
+		if err := isSafe(hardLimits, used, newUsed, skipOverflow); err != nil {
+			return err
+		}
+	} else {
+		if err := isSafe(configLimit, used, newUsed, skipOverflow); err != nil {
+			return err
+		}
 	}
 
 	usage.Used = newUsed.String()

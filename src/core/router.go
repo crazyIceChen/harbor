@@ -80,6 +80,9 @@ func initRouters() {
 	beego.Router("/api/quotas/:id([0-9]+)", &api.QuotaAPI{}, "get:Get;put:Put")
 
 	beego.Router("/api/repositories", &api.RepositoryAPI{}, "get:Get")
+	//2020.1.16 add by chenguwen
+	beego.Router("/api/repositories/all", &api.RepositoryAPI{}, "get:GetAll")
+	//
 	beego.Router("/api/repositories/*", &api.RepositoryAPI{}, "delete:Delete;put:Put")
 	beego.Router("/api/repositories/*/labels", &api.RepositoryLabelAPI{}, "get:GetOfRepository;post:AddToRepository")
 	beego.Router("/api/repositories/*/labels/:id([0-9]+)", &api.RepositoryLabelAPI{}, "delete:RemoveFromRepository")

@@ -86,6 +86,44 @@ type manifestResp struct {
 }
 
 // Get ...
+func (ra *RepositoryAPI) GetAll() {
+
+	labelID, err := ra.GetInt64("label_id", 0)
+	if err != nil {
+		ra.SendBadRequestError(fmt.Errorf("invalid label_id: %s", ra.GetString("label_id")))
+		return
+	}
+
+	query := &models.RepositoryQuery{
+		Name:    ra.GetString("q"),
+		LabelID: labelID,
+	}
+	query.Page, query.Size, err = ra.GetPaginationParams()
+	if err != nil {
+		ra.SendBadRequestError(err)
+		return
+	}
+
+	query.Sort = ra.GetString("sort")
+
+	total, err := dao.GetTotalOfAllRepositories(query)
+	if err != nil {
+		ra.SendInternalServerError(fmt.Errorf("failed to get total of repositories : %v",
+			err))
+		return
+	}
+
+	repositories, err := getAllRepositories(query)
+	if err != nil {
+		ra.SendInternalServerError(fmt.Errorf("failed to get repository: %v", err))
+		return
+	}
+
+	ra.SetPaginationHeader(total, query.Page, query.Size)
+	ra.Data["json"] = repositories
+	ra.ServeJSON()
+}
+
 func (ra *RepositoryAPI) Get() {
 	projectID, err := ra.GetInt64("project_id")
 	if err != nil || projectID <= 0 {
@@ -144,6 +182,15 @@ func (ra *RepositoryAPI) Get() {
 	ra.SetPaginationHeader(total, query.Page, query.Size)
 	ra.Data["json"] = repositories
 	ra.ServeJSON()
+}
+
+func getAllRepositories(query *models.RepositoryQuery) ([]*repoResp, error) {
+	repositories, err := dao.GetAllRepositories(query)
+	if err != nil {
+		return nil, err
+	}
+
+	return assembleReposInParallel(repositories), nil
 }
 
 func getRepositories(query *models.RepositoryQuery) ([]*repoResp, error) {

@@ -115,6 +115,17 @@ func GetTopRepos(projectIDs []int64, n int) ([]*models.RepoRecord, error) {
 }
 
 // GetTotalOfRepositories ...
+func GetTotalOfAllRepositories(query ...*models.RepositoryQuery) (int64, error) {
+	sql, params := repositoryQueryConditions()
+	sql = `select count(*) ` + sql
+	var total int64
+	if err := GetOrmer().Raw(sql, params).QueryRow(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+// GetTotalOfRepositories ...
 func GetTotalOfRepositories(query ...*models.RepositoryQuery) (int64, error) {
 	sql, params := repositoryQueryConditions(query...)
 	sql = `select count(*) ` + sql
@@ -136,6 +147,38 @@ func GetRepositories(query ...*models.RepositoryQuery) ([]*models.RepoRecord, er
 	}
 
 	condition, params := repositoryQueryConditions(query...)
+	sql := fmt.Sprintf(`select r.repository_id, r.name, r.project_id, r.description, r.pull_count, 
+	r.star_count, r.creation_time, r.update_time %s order by r.%s `, condition, order)
+	if len(query) > 0 && query[0] != nil {
+		page, size := query[0].Page, query[0].Size
+		if size > 0 {
+			sql += `limit ? `
+			params = append(params, size)
+			if page > 0 {
+				sql += `offset ? `
+				params = append(params, size*(page-1))
+			}
+		}
+	}
+
+	if _, err := GetOrmer().Raw(sql, params).QueryRows(&repositories); err != nil {
+		return nil, err
+	}
+
+	return repositories, nil
+}
+
+// GetRepositories ...
+func GetAllRepositories(query ...*models.RepositoryQuery) ([]*models.RepoRecord, error) {
+	repositories := []*models.RepoRecord{}
+	order := "name asc"
+	if len(query) > 0 && query[0] != nil {
+		if s, ok := orderMap[query[0].Sort]; ok {
+			order = s
+		}
+	}
+
+	condition, params := repositoryQueryConditions()
 	sql := fmt.Sprintf(`select r.repository_id, r.name, r.project_id, r.description, r.pull_count, 
 	r.star_count, r.creation_time, r.update_time %s order by r.%s `, condition, order)
 	if len(query) > 0 && query[0] != nil {

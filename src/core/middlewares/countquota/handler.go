@@ -17,12 +17,15 @@ package countquota
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/goharbor/harbor/src/common/quota"
 	"github.com/goharbor/harbor/src/common/utils/log"
 	"github.com/goharbor/harbor/src/core/middlewares/interceptor"
 	"github.com/goharbor/harbor/src/core/middlewares/util"
 )
+
+const OES_PROJECT string = "onenet-oes-market"
 
 type countQuotaHandler struct {
 	builders []interceptor.Builder
@@ -43,6 +46,13 @@ func New(next http.Handler, builders ...interceptor.Builder) http.Handler {
 
 // ServeHTTP manifest ...
 func (h *countQuotaHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	sp := strings.Split(req.RequestURI, "/")
+	log.Info("quota url: ", sp)
+	if len(sp) > 2 && sp[2] == OES_PROJECT {
+		log.Info("oes-market needn't quota " + OES_PROJECT)
+		h.next.ServeHTTP(rw, req)
+		return
+	}
 	interceptor, err := h.getInterceptor(req)
 	if err != nil {
 		log.Warningf("Error occurred when to handle request in count quota handler: %v", err)
