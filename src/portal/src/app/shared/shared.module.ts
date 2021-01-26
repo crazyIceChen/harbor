@@ -21,18 +21,14 @@ import { MessageService } from "../global-message/message.service";
 import { MessageComponent } from "../global-message/message.component";
 import { DateValidatorDirective } from "./date-validator.directive";
 import { CoreModule } from "../core/core.module";
-
 import { AuthCheckGuard } from "./route/auth-user-activate.service";
 import { SignInGuard } from "./route/sign-in-guard-activate.service";
 import { SystemAdminGuard } from "./route/system-admin-activate.service";
 import { MemberGuard } from "./route/member-guard-activate.service";
 import { MemberPermissionGuard } from "./route/member-permission-guard-activate.service";
 import { OidcGuard } from "./route/oidc-guard-active.service";
-import { LeavingRepositoryRouteDeactivate } from "./route/leaving-repository-deactivate.service";
-
 import { PortValidatorDirective } from "./port.directive";
 import { MaxLengthExtValidatorDirective } from "./max-length-ext.directive";
-
 import { StatisticHandler } from "./statictics/statistic-handler.service";
 import { StatisticsComponent } from "./statictics/statistics.component";
 import { StatisticsPanelComponent } from "./statictics/statistics-panel.component";
@@ -50,6 +46,8 @@ import { ListChartVersionRoComponent } from "./list-chart-version-ro/list-chart-
 import { IServiceConfig, SERVICE_CONFIG } from "../../lib/entities/service.config";
 import { ErrorHandler } from "../../lib/utils/error-handler";
 import { HarborLibraryModule } from "../../lib/harbor-library.module";
+import { CURRENT_BASE_HREF, V1_BASE_HREF } from "../../lib/utils/utils";
+import { ViewTokenComponent } from "../system-robot-accounts/view-token/view-token.component";
 
 const uiLibConfig: IServiceConfig = {
   enablei18Support: true,
@@ -57,24 +55,25 @@ const uiLibConfig: IServiceConfig = {
   langMessageLoader: "http",
   langMessagePathForHttpLoader: "i18n/lang/",
   langMessageFileSuffixForHttpLoader: "-lang.json",
-  systemInfoEndpoint: "/api/systeminfo",
-  repositoryBaseEndpoint: "/api/repositories",
-  logBaseEndpoint: "/api/logs",
-  targetBaseEndpoint: "/api/registries",
-  replicationBaseEndpoint: "/api/replication",
-  replicationRuleEndpoint: "/api/replication/policies",
-  vulnerabilityScanningBaseEndpoint: "/api/repositories",
-  projectPolicyEndpoint: "/api/projects/configs",
-  projectBaseEndpoint: "/api/projects",
+  systemInfoEndpoint: CURRENT_BASE_HREF + "/systeminfo",
+  repositoryBaseEndpoint: CURRENT_BASE_HREF + "/repositories",
+  logBaseEndpoint: CURRENT_BASE_HREF + "/logs",
+  targetBaseEndpoint: CURRENT_BASE_HREF + "/registries",
+  replicationBaseEndpoint: CURRENT_BASE_HREF + "/replication",
+  replicationRuleEndpoint: CURRENT_BASE_HREF + "/replication/policies",
+  vulnerabilityScanningBaseEndpoint: CURRENT_BASE_HREF + "/repositories",
+  projectPolicyEndpoint: CURRENT_BASE_HREF + "/projects/configs",
+  projectBaseEndpoint: CURRENT_BASE_HREF + "/projects",
   localI18nMessageVariableMap: {},
-  configurationEndpoint: "/api/configurations",
-  scanJobEndpoint: "/api/jobs/scan",
-  labelEndpoint: "/api/labels",
-  helmChartEndpoint: "/api/chartrepo",
+  configurationEndpoint: CURRENT_BASE_HREF + "/configurations",
+  scanJobEndpoint: CURRENT_BASE_HREF + "/jobs/scan",
+  labelEndpoint: CURRENT_BASE_HREF + "/labels",
+  helmChartEndpoint: V1_BASE_HREF + "/chartrepo",
   downloadChartEndpoint: "/chartrepo",
-  gcEndpoint: "/api/system/gc",
-  ScanAllEndpoint: "/api/system/scanAll",
-  quotaUrl: "/api/quotas"
+  helmChartLabelEndpoint: CURRENT_BASE_HREF + "/chartrepo",
+  gcEndpoint: CURRENT_BASE_HREF + "/system/gc",
+  ScanAllEndpoint: CURRENT_BASE_HREF + "/system/scanAll",
+  quotaUrl: CURRENT_BASE_HREF + "/quotas"
 };
 
 @NgModule({
@@ -104,7 +103,8 @@ const uiLibConfig: IServiceConfig = {
     ListRepositoryROComponent,
     GaugeComponent,
     DateValidatorDirective,
-    ListChartVersionRoComponent
+    ListChartVersionRoComponent,
+    ViewTokenComponent,
   ],
   exports: [
     CoreModule,
@@ -126,7 +126,8 @@ const uiLibConfig: IServiceConfig = {
     DateValidatorDirective,
     FormsModule,
     ReactiveFormsModule,
-    ListChartVersionRoComponent
+    ListChartVersionRoComponent,
+    ViewTokenComponent,
   ],
   providers: [
     SessionService,
@@ -136,7 +137,6 @@ const uiLibConfig: IServiceConfig = {
     SystemAdminGuard,
     AuthCheckGuard,
     SignInGuard,
-    LeavingRepositoryRouteDeactivate,
     MemberGuard,
     MemberPermissionGuard,
     OidcGuard,

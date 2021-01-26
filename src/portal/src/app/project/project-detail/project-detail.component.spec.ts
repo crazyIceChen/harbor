@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ProjectDetailComponent } from './project-detail.component';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
@@ -10,7 +10,7 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { SessionService } from '../../shared/session.service';
-import { AppConfigService } from "../../app-config.service";
+import { AppConfigService } from "../../services/app-config.service";
 import { ProjectService, UserPermissionService } from "../../../lib/services";
 import { ErrorHandler } from "../../../lib/utils/error-handler";
 
@@ -57,11 +57,11 @@ describe('ProjectDetailComponent', () => {
         data: of({
             projectResolver: {
                 ismember: true,
-                role_name: 'master',
+                role_name: 'maintainer',
             }
         })
     };
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             schemas: [
                 CUSTOM_ELEMENTS_SCHEMA

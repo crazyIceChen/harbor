@@ -1,5 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
-import { AppConfigService } from '../..//app-config.service';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { SessionService } from '../../shared/session.service';
@@ -18,8 +17,10 @@ import { FormsModule } from '@angular/forms';
 import { MessageHandlerService } from '../../shared/message-handler/message-handler.service';
 import { AccountSettingsModalService } from '../../account/account-settings/account-settings-modal-service.service';
 import { PasswordSettingService } from '../../account/password-setting/password-setting.service';
-import { SkinableConfig } from '../../skinable-config.service';
+import { SkinableConfig } from '../../services/skinable-config.service';
 import { InlineAlertComponent } from '../../shared/inline-alert/inline-alert.component';
+import { AppConfigService } from "../../services/app-config.service";
+import { ErrorHandler } from '../../../lib/utils/error-handler';
 
 describe('HarborShellComponent', () => {
     let component: HarborShellComponent;
@@ -56,7 +57,7 @@ describe('HarborShellComponent', () => {
         },
         getConfig: function () {
             return {
-                with_clair: true
+                with_trivy: true
             };
         }
     };
@@ -65,7 +66,7 @@ describe('HarborShellComponent', () => {
             return of(true);
         }
     };
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             imports: [
                 RouterTestingModule,
@@ -86,6 +87,7 @@ describe('HarborShellComponent', () => {
                 { provide: AccountSettingsModalService, useValue: mockAccountSettingsModalService },
                 { provide: PasswordSettingService, useValue: mockPasswordSettingService },
                 { provide: SkinableConfig, useValue: mockSkinableConfig },
+                ErrorHandler
             ],
             schemas: [CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA]
         }).compileComponents();

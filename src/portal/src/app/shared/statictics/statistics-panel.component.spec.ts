@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { StatisticsPanelComponent } from './statistics-panel.component';
 import { StatisticsComponent } from './statistics.component';
@@ -13,7 +13,7 @@ import { StatisticsService } from "./statistics.service";
 import { SessionService } from "../session.service";
 import { MessageHandlerService } from "../message-handler/message-handler.service";
 import { StatisticHandler } from "./statistic-handler.service";
-import { AppConfigService } from "./../../app-config.service";
+import { AppConfigService } from "../../services/app-config.service";
 import { Statistics } from './statistics';
 import { Volumes } from './volumes';
 describe('StatisticsPanelComponent', () => {
@@ -42,7 +42,7 @@ describe('StatisticsPanelComponent', () => {
     const mockRouter = {
         navigate: () => { }
     };
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             schemas: [
                 CUSTOM_ELEMENTS_SCHEMA

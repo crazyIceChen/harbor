@@ -2,14 +2,23 @@
 
 ## Welcome
 
-Welcome to Harbor! This guide provides information on filing issues and guidelines for open source contributors. **Please leave comments / suggestions if you find something is missing or incorrect.**
+Harbor is developed in the open, and is constantly being improved by our **users, contributors, and maintainers**.
+It is because of you that we can bring great software to the community.
 
-Contributors are encouraged to collaborate using the following resources in addition to the GitHub [issue tacker](https://github.com/goharbor/harbor/issues):
+This guide provides information on filing issues and guidelines for open source contributors. **Please leave comments / suggestions if you find something is missing or incorrect.**
 
-**Twitter:** [@project_harbor](https://twitter.com/project_harbor)  
-**User Group:** Join Harbor user email group: [harbor-users@googlegroups.com](https://groups.google.com/forum/#!forum/harbor-users) to get update of Harbor's news, features, releases, or to provide suggestion and feedback. To subscribe, send an email to [harbor-users+subscribe@googlegroups.com](mailto:harbor-users+subscribe@googlegroups.com) .  
-**Developer Group:** Join Harbor developer group: [harbor-dev@googlegroups.com](https://groups.google.com/forum/#!forum/harbor-dev) for discussion on Harbor development and contribution. To subscribe, send an email to [harbor-dev+subscribe@googlegroups.com](mailto:harbor-dev+subscribe@googlegroups.com).  
-**Slack:** Join Harbor's community for discussion and ask questions: [Cloud Native Computing Foundation](https://slack.cncf.io/), channel: #harbor and #harbor-dev
+Contributors are encouraged to collaborate using the following resources in addition to the GitHub [issue tracker](https://github.com/goharbor/harbor/issues):
+
+* [Bi-weekly public community meetings][community-meetings]
+  * Catch up with [past meetings on YouTube][past-meetings]
+* Chat with us on the CNCF Slack ([get an invite here][cncf-slack] )
+  * [#harbor][users-slack] for end-user discussions
+  * [#harbor-dev][dev-slack] for development of Harbor
+* Want long-form communication instead of Slack? We have two distributions lists:
+  * [harbor-users][users-dl] for end-user discussions
+  * [harbor-dev][dev-dl] for development of Harbor
+
+Follow us on Twitter at [@project_harbor][twitter]
 
 ## Getting Started
 
@@ -34,7 +43,7 @@ git fetch $USER
 ```
 **NOTES:** Note that GOPATH can be any directory, the example above uses $HOME/go. Change $USER above to your own GitHub username.
 
-To build the project, please refer the [build](docs/compile_guide.md) guideline.
+To build the project, please refer the [build](https://goharbor.io/docs/2.0.0/build-customize-contribute/compile-guide/) guideline.
 
 ### Repository Structure
 
@@ -43,7 +52,6 @@ Here is the basic structure of the harbor code base. Some of the key folders / f
 .
 ...
 ├── contrib       # Contain documents, scripts, and other helpful things which are contributed by the community
-├── docs          # Keep documents here
 ├── make          # Resource for building and setting up Harbor environment
 ...
 ├── src           # Source code folder
@@ -55,8 +63,8 @@ Here is the basic structure of the harbor code base. Some of the key folders / f
 The folder graph below shows the structure of the source code folder `harbor/src`, which will be your primary working directory. The key folders are also commented.
 ```
 .
-├── chartserver          # Source code contains the main logic to handle chart. 
-├── cmd                  # Source code contains migrate script to handle DB upgrade.
+├── chartserver         # Source code contains the main logic to handle chart.
+├── cmd                 # Source code contains migrate script to handle DB upgrade.
 ├── common              # Source code for some general components like dao etc.
 │   ├── api
 │   ├── config
@@ -69,7 +77,21 @@ The folder graph below shows the structure of the source code folder `harbor/src
 │   ├── secret
 │   ├── security
 │   └── utils
-├── core          # Source code for the main busines logic. Contains rest apis and all service infomation. 
+├── controller          # Source code for the controllers used by the API handlers.
+│   ├── artifact
+│   ├── blob
+│   ├── event
+│   ├── icon
+│   ├── p2p
+│   ├── project
+│   ├── proxy
+│   ├── quota
+│   ├── repository
+│   ├── scan
+│   ├── scanner
+│   ├── tag
+│   ├── task
+├── core                # Source code for the main busines logic. Contains rest apis and all service infomation.
 │   ├── api
 │   ├── auth
 │   ├── config
@@ -98,13 +120,19 @@ The folder graph below shows the structure of the source code folder `harbor/src
 │   ├── runtime
 │   ├── tests
 │   └── utils
-├── portal               # The code of harbor web UI
+├── portal              # The code of harbor web UI
 │   ├── e2e
 │   ├── lib             # Source code of @harbor/ui npm library which includes the main UI components of web UI
 │   └── src             # General web page UI code of Harbor
-├── registryctl          # Source code contains the main logic to handle registry. 
-├── replication          # Source code contains the main logic of replication. 
-├── testing              # Some utilities to handle testing. 
+├── registryctl         # Source code contains the main logic to handle registry.
+├── replication         # Source code contains the main logic of replication.
+├── server              # Source code for the APIs.
+│   ├── handler
+│   ├── middleware
+│   ├── registry
+│   ├── router
+│   ├── v2.0
+├── testing             # Some utilities to handle testing.
 └── vendor              # Go code dependencies
     ├── github.com
     ├── golang.org
@@ -129,11 +157,12 @@ Harbor backend is written in [Go](http://golang.org/). If you don't have a Harbo
 |   1.8    |    1.11.2     |
 |   1.9    |    1.12.12    |
 |   1.10   |    1.12.12    |
-|   1.11   |    1.13.4     |
+|   2.0    |    1.13.15    |
+|   2.1    |    1.15.6     |
 
 Ensure your GOPATH and PATH have been configured in accordance with the Go environment instructions.
 
-**Dependency Management:** Harbor uses [dep](https://github.com/golang/dep) for dependency management of go code.  The official maintainers will take the responsibility for managing the code in `vendor` directory.  Please don't try to submit a PR to update the dependency code, open an issue instead.  If your PR requires a change in the vendor code please make sure you discuss it with the maintainers in advance.
+**Dependency Management:** Harbor uses [Go modules](https://github.com/golang/go/wiki/Modules) for dependency management of go code.  The official maintainers will take the responsibility for managing the code in `vendor` directory.  Please don't try to submit a PR to update the dependency code, open an issue instead.  If your PR requires a change in the vendor code please make sure you discuss it with the maintainers in advance.
 
 #### Web
 
@@ -161,8 +190,7 @@ cd $REPO_DIR/src/portal/lib
 npm install
 ```
 
-
-To run the code, please refer to the [build](docs/compile_guide.md) guideline.
+To run the code, please refer to the [build](https://goharbor.io/docs/2.0.0/build-customize-contribute/compile-guide/) guideline.
 
 ## Contribute Workflow
 
@@ -170,10 +198,7 @@ PR are always welcome, even if they only contain small fixes like typos or a few
 
 Please submit a PR broken down into small changes bit by bit. A PR consisting of a lot features and code changes may be hard to review. It is recommended to submit PRs in an incremental fashion.
 
-Note: If you split your pull request to small changes, please make sure any of the changes goes to master will not break anything. Otherwise, it can not be merged until this feature complete. 
-
-The graphic shown below describes the overall workflow about how to contribute code to Harbor repository.
-![contribute workflow](docs/img/workflow.png)
+Note: If you split your pull request to small changes, please make sure any of the changes goes to master will not break anything. Otherwise, it can not be merged until this feature complete.
 
 ### Fork and clone
 
@@ -215,7 +240,7 @@ Write code on the new branch in your fork. The coding style used in Harbor is su
 
 Try to limit column width to 120 characters for both code and markdown documents such as this one.
 
-As we are enforcing standards set by [golint](https://github.com/golang/lint), please always run golint on source code before committing your changes. If it reports an issue, in general, the preferred action is to fix the code to comply with the linter's recommendation 
+As we are enforcing standards set by [golint](https://github.com/golang/lint), please always run golint on source code before committing your changes. If it reports an issue, in general, the preferred action is to fix the code to comply with the linter's recommendation
 because golint gives suggestions according to the stylistic conventions listed in [Effective Go](https://golang.org/doc/effective_go.html) and the [CodeReviewComments](https://github.com/golang/go/wiki/CodeReviewComments).
 ```
 #Install fgt and golint
@@ -243,7 +268,11 @@ Run UI library test cases:
 npm run test
 ```
 
-To build code, please refer to [build](docs/compile_guide.md) guideline.
+To build the code, please refer to [build](https://goharbor.io/docs/2.0.0/build-customize-contribute/compile-guide/) guideline.
+
+**Note**: from v2.0, Harbor uses [go-swagger](https://github.com/go-swagger/go-swagger) to generate API server from Swagger 2.0 (aka [OpenAPI 2.0](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md)). To add or change the APIs, first update the `api/v2.0/swagger.yaml` file, then run `make gen_apis` to generate the API server, finally, implement or update the API handlers in `src/server/v2.0/handler` package.
+
+As now Harbor uses `controller/manager/dao` programming model, we suggest to use [testify mock](github.com/stretchr/testify/mock) to test `controller` and `manager`. Harbor integrates [mockery](https://github.com/vektra/mockery) to generate mocks for golang interfaces using the testify mock package. To generate mocks for the interface, first add `//go:generate mockery xxx` comment with mockery command in the subpackages of `src/testing`, then run `make gen_mocks` to generate mocks.
 
 ###  Keep sync with upstream
 
@@ -288,7 +317,7 @@ Once your pull request has been opened, harbor will run two CI pipelines against
 * If the coverage dramatic decline, you need to commit unit test to coverage your code.
 2. In the drone CI, the E2E test will be triggered against the pull request. Also, the source code will be checked via `gosec`, and the result is stored in google storage for later analysis. The pipeline is about to build and install harbor from source code, then to run four very basic E2E tests to validate the basic functionalities of harbor, like:
 * Registry Basic Verification, to validate the image can be pulled and pushed successful.
-* Clair Basic Verification, to validate the image can be scanned successful.
+* Trivy Basic Verification, to validate the image can be scanned successful.
 * Notary Basic Verification, to validate the image can be signed successful.
 * Ldap Basic Verification, to validate harbor can work in LDAP environment.
 
@@ -327,10 +356,19 @@ Be sure to include the steps to reproduce the problem if applicable. It can help
 
 Update the documentation if you are creating or changing features. Good documentation is as important as the code itself.
 
-The main location for the document is the `docs/` folder. The images referred in documents can be placed in `docs/img`.
+The main location for the documentation is the [website repository](https://github.com/goharbor/website). The images referred to in documents can be placed in `docs/img` in that repo.
 
-Documents are written with Markdown text. See [Writing on GitHub](https://help.github.com/categories/writing-on-github/) for more details.
+Documents are written with Markdown. See [Writing on GitHub](https://help.github.com/categories/writing-on-github/) for more details.
 
 ## Design new features
 
 You can propose new designs for existing Harbor features. You can also design entirely new features, Please submit a proposal in GitHub.(https://github.com/goharbor/community/tree/master/proposals). Harbor maintainers will review this proposal as soon as possible. This is necessary to ensure the overall architecture is consistent and to avoid duplicated work in the roadmap.
+
+[community-meetings]: https://github.com/goharbor/community/blob/master/MEETING_SCHEDULE.md
+[past-meetings]: https://www.youtube.com/playlist?list=PLgInP-D86bCwTC0DYAa1pgupsQIAWPomv
+[users-slack]: https://cloud-native.slack.com/archives/CC1E09J6S
+[dev-slack]: https://cloud-native.slack.com/archives/CC1E0J0MC
+[cncf-slack]: https://slack.cncf.io
+[users-dl]: https://lists.cncf.io/g/harbor-users
+[dev-dl]: https://lists.cncf.io/g/harbor-dev
+[twitter]: http://twitter.com/project_harbor

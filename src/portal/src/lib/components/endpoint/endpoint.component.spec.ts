@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, async } from "@angular/core/testing";
+import { ComponentFixture, TestBed, waitForAsync } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { DebugElement } from "@angular/core";
@@ -18,10 +18,11 @@ import {
 import { IServiceConfig, SERVICE_CONFIG } from "../../entities/service.config";
 import { OperationService } from "../operation/operation.service";
 
-import { click } from "../../utils/utils";
+import { click, CURRENT_BASE_HREF } from "../../utils/utils";
 import { of } from "rxjs";
 import { HttpClientTestingModule } from "@angular/common/http/testing";
 import { HttpClient } from "@angular/common/http";
+import { AppConfigService } from '../../../app/services/app-config.service';
 
 describe("EndpointComponent (inline template)", () => {
   let adapterInfoMockData = {
@@ -184,7 +185,16 @@ describe("EndpointComponent (inline template)", () => {
           {
             "key": "sa-east-1",
             "value": "https://api.ecr.sa-east-1.amazonaws.com"
+          },
+          {
+            "key": "cn-north-1",
+            "value": "https://api.ecr.cn-north-1.amazonaws.com.cn"
+          },
+          {
+            "key": "cn-northwest-1",
+            "value": "https://api.ecr.cn-northwest-1.amazonaws.com.cn"
           }
+
         ]
       },
       "credential_pattern": null
@@ -311,7 +321,15 @@ describe("EndpointComponent (inline template)", () => {
   let comp: EndpointComponent;
   let fixture: ComponentFixture<EndpointComponent>;
   let config: IServiceConfig = {
-    systemInfoEndpoint: "/api/endpoints/testing"
+    systemInfoEndpoint: CURRENT_BASE_HREF + "/endpoints/testing"
+  };
+  const mockAppConfigService = {
+    getConfig: () => {
+      return {
+        project_creation_restriction: "",
+        with_chartmuseum: ""
+      };
+    }
   };
 
   let endpointService: EndpointService;
@@ -319,7 +337,7 @@ describe("EndpointComponent (inline template)", () => {
   let spyAdapter: jasmine.Spy;
   let spyOnRules: jasmine.Spy;
   let spyOne: jasmine.Spy;
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       imports: [SharedModule, NoopAnimationsModule, HttpClientTestingModule],
       declarations: [
@@ -335,6 +353,7 @@ describe("EndpointComponent (inline template)", () => {
         { provide: EndpointService, useClass: EndpointDefaultService },
         { provide: OperationService },
         { provide: HttpClient, useValue: fakedHttp },
+        { provide: AppConfigService, useValue: mockAppConfigService }
       ]
     });
   }));
@@ -368,10 +387,10 @@ describe("EndpointComponent (inline template)", () => {
 
   it("should endpoint be initialized", () => {
     fixture.detectChanges();
-    expect(config.systemInfoEndpoint).toEqual("/api/endpoints/testing");
+    expect(config.systemInfoEndpoint).toEqual(CURRENT_BASE_HREF + "/endpoints/testing");
   });
 
-  it("should open create endpoint modal", async(() => {
+  it("should open create endpoint modal", waitForAsync(() => {
     fixture.detectChanges();
     fixture.whenStable().then(() => {
       fixture.detectChanges();
@@ -381,7 +400,7 @@ describe("EndpointComponent (inline template)", () => {
     });
   }));
 
-  it("should filter endpoints by keyword", async(() => {
+  it("should filter endpoints by keyword", waitForAsync(() => {
     fixture.detectChanges();
     fixture.whenStable().then(() => {
       fixture.detectChanges();
@@ -391,7 +410,7 @@ describe("EndpointComponent (inline template)", () => {
     });
   }));
 
-  it("should render data", async(() => {
+  it("should render data", waitForAsync(() => {
     fixture.detectChanges();
     fixture.whenStable().then(() => {
       fixture.detectChanges();
@@ -404,7 +423,7 @@ describe("EndpointComponent (inline template)", () => {
     });
   }));
 
-  it("should open creation endpoint", async(() => {
+  it("should open creation endpoint", waitForAsync(() => {
     fixture.detectChanges();
     fixture.whenStable().then(() => {
       let de: DebugElement = fixture.debugElement.query(By.css("btn-link"));
@@ -417,7 +436,7 @@ describe("EndpointComponent (inline template)", () => {
     });
   }));
 
-  it("should open to edit existing endpoint", async(() => {
+  it("should open to edit existing endpoint", waitForAsync(() => {
     fixture.detectChanges();
     fixture.whenStable().then(() => {
       let de: DebugElement = fixture.debugElement.query(

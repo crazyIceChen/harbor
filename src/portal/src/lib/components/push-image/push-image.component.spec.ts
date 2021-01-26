@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { PushImageButtonComponent } from './push-image.component';
 import { CopyInputComponent } from './copy-input.component';
@@ -6,20 +6,22 @@ import { InlineAlertComponent } from '../inline-alert/inline-alert.component';
 
 import { SERVICE_CONFIG, IServiceConfig } from '../../entities/service.config';
 import { SharedModule } from '../../utils/shared/shared.module';
+import { ErrorHandler } from '../../../lib/utils/error-handler';
 
 describe('PushImageButtonComponent (inline template)', () => {
   let component: PushImageButtonComponent;
   let fixture: ComponentFixture<PushImageButtonComponent>;
   let serviceConfig: IServiceConfig;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       imports: [
         SharedModule
       ],
       declarations: [InlineAlertComponent, CopyInputComponent, PushImageButtonComponent],
       providers: [
-        { provide: SERVICE_CONFIG, useValue: {} }
+        { provide: SERVICE_CONFIG, useValue: {} },
+        ErrorHandler
       ]
     });
 
@@ -51,10 +53,10 @@ describe('PushImageButtonComponent (inline template)', () => {
       let copyInputs: HTMLInputElement[] = fixture.nativeElement.querySelectorAll('.command-input');
       fixture.whenStable().then(() => {
         fixture.detectChanges();
-        expect(copyInputs.length).toEqual(2);
+        expect(copyInputs.length).toEqual(5);
         expect(copyInputs[0].value.trim())
-        .toEqual(`docker tag SOURCE_IMAGE[:TAG] ${component.registryUrl}/${component.projectName}/IMAGE[:TAG]`);
-        expect(copyInputs[1].value.trim()).toEqual(`docker push ${component.registryUrl}/${component.projectName}/IMAGE[:TAG]`);
+        .toEqual(`docker tag SOURCE_IMAGE[:TAG] ${component.registryUrl}/${component.projectName}/REPOSITORY[:TAG]`);
+        expect(copyInputs[1].value.trim()).toEqual(`docker push ${component.registryUrl}/${component.projectName}/REPOSITORY[:TAG]`);
       });
     });
   });

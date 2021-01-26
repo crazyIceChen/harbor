@@ -6,6 +6,23 @@ import { DebugElement } from '@angular/core';
 import { Comparator, State, HttpOptionInterface, HttpOptionTextInterface, QuotaUnitInterface } from '../services/interface';
 import { QuotaUnits, StorageMultipleConstant, LimitCount } from '../entities/shared.const';
 import { AbstractControl } from "@angular/forms";
+/**
+ * Api levels
+ */
+enum APILevels {
+    V1 = '',
+    V2 = '/v2.0'
+}
+
+/**
+ * v1 base href
+ */
+export const V1_BASE_HREF = '/api' + APILevels.V1;
+
+/**
+ * Current base href
+ */
+export const CURRENT_BASE_HREF = '/api' + APILevels.V2;
 
 /**
  * Convert the different async channels to the Promise<T> type.
@@ -36,7 +53,7 @@ export const DEFAULT_LANG_COOKIE_KEY = 'harbor-lang';
 /**
  * Declare what languages are supported now.
  */
-export const DEFAULT_SUPPORTING_LANGS = ['en-us', 'zh-cn', 'es-es', 'fr-fr', 'pt-br', 'tr-tr'];
+export const DEFAULT_SUPPORTING_LANGS = ['en-us', 'zh-cn', 'zh-tw', 'es-es', 'fr-fr', 'pt-br', 'tr-tr', 'de-de'];
 
 /**
  * The default language.
@@ -228,12 +245,14 @@ export const DEFAULT_PAGE_SIZE: number = 15;
 /**
  *  The default supported mime type
  */
-export const DEFAULT_SUPPORTED_MIME_TYPE = "application/vnd.scanner.adapter.vuln.report.harbor+json; version=1.0";
+export const DEFAULT_SUPPORTED_MIME_TYPES =
+    "application/vnd.security.vulnerability.report; version=1.1, application/vnd.scanner.adapter.vuln.report.harbor+json; version=1.0";
 
 /**
  *  the property name of vulnerability database updated time
  */
 export const DATABASE_UPDATED_PROPERTY = "harbor.scanner-adapter/vulnerability-database-updated-at";
+export const DATABASE_NEXT_UPDATE_PROPERTY = "harbor.scanner-adapter/vulnerability-database-next-update-at";
 
 /**
  * The state of vulnerability scanning
@@ -548,17 +567,6 @@ export const GetIntegerAndUnit = (hardNumber: number, quotaUnitsDeep: QuotaUnitI
     }
 };
 
-export const validateCountLimit = () => {
-  return (control: AbstractControl) => {
-    if (control.value > LimitCount) {
-      return {
-        error: true
-      };
-    }
-    return null;
-  };
-};
-
 export const validateLimit = unitContrl => {
   return (control: AbstractControl) => {
     if (
@@ -574,3 +582,67 @@ export const validateLimit = unitContrl => {
   };
 };
 
+export function formatSize(tagSize: string): string {
+    let size: number = Number.parseInt(tagSize);
+    if (Math.pow(1024, 1) <= size && size < Math.pow(1024, 2)) {
+        return (size / Math.pow(1024, 1)).toFixed(2) + "KB";
+    } else if (Math.pow(1024, 2) <= size && size < Math.pow(1024, 3)) {
+        return (size / Math.pow(1024, 2)).toFixed(2) + "MB";
+    } else if (Math.pow(1024, 3) <= size && size < Math.pow(1024, 4)) {
+        return (size / Math.pow(1024, 3)).toFixed(2) + "GB";
+    } else {
+        return size + "B";
+    }
+}
+
+/**
+ * Simple object check.
+ * @param item
+ * @returns {boolean}
+ */
+export function isObject(item): boolean {
+    return (item && typeof item === 'object' && !Array.isArray(item));
+}
+
+/**
+ * Deep merge two objects.
+ * @param target
+ * @param ...sources
+ */
+export function mergeDeep(target, ...sources) {
+    if (!sources.length) { return target; }
+    const source = sources.shift();
+
+    if (isObject(target) && isObject(source)) {
+        for (const key in source) {
+            if (isObject(source[key])) {
+                if (!target[key]) { Object.assign(target, { [key]: {} }); }
+                mergeDeep(target[key], source[key]);
+            } else {
+                Object.assign(target, { [key]: source[key] });
+            }
+        }
+    }
+    return mergeDeep(target, ...sources);
+}
+export function dbEncodeURIComponent(url: string) {
+    if (typeof url === "string") {
+        return encodeURIComponent(encodeURIComponent(url));
+    }
+    return "";
+}
+
+/**
+ * delete empty key
+ * @param obj
+ */
+export function deleteEmptyKey(obj: Object): void {
+   if (isEmptyObject(obj)) {
+       return;
+   }
+    for ( let key in obj ) {
+        if ( !obj[key] ) {
+            delete obj[key];
+        }
+    }
+}

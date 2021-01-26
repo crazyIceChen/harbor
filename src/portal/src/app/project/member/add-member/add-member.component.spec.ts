@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AddMemberComponent } from './add-member.component';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
@@ -12,6 +12,7 @@ import { UserService } from '../../../user/user.service';
 import { of } from 'rxjs';
 import { MessageHandlerService } from '../../../shared/message-handler/message-handler.service';
 import { ActivatedRoute } from '@angular/router';
+import { ErrorHandler } from '../../../../lib/utils/error-handler';
 
 describe('AddMemberComponent', () => {
     let component: AddMemberComponent;
@@ -34,7 +35,7 @@ describe('AddMemberComponent', () => {
         handleError: () => { },
         isAppLevel: () => { },
     };
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             schemas: [
                 CUSTOM_ELEMENTS_SCHEMA
@@ -54,6 +55,7 @@ describe('AddMemberComponent', () => {
                 { provide: MemberService, useValue: mockMemberService },
                 { provide: UserService, useValue: mockUserService },
                 { provide: MessageHandlerService, useValue: mockMessageHandlerService },
+                ErrorHandler,
                 {
                     provide: ActivatedRoute, useValue: {
                         RouterparamMap: of({ get: (key) => 'value' }),

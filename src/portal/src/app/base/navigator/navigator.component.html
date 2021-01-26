@@ -22,18 +22,20 @@
             <clr-dropdown-menu *clrIfOpen>
                 <a href="javascript:void(0)" clrDropdownItem (click)='switchLanguage("en-us")' [class.lang-selected]='matchLang("en-us")'>English</a>
                 <a href="javascript:void(0)" clrDropdownItem (click)='switchLanguage("zh-cn")' [class.lang-selected]='matchLang("zh-cn")'>中文简体</a>
+                <a href="javascript:void(0)" clrDropdownItem (click)='switchLanguage("zh-tw")' [class.lang-selected]='matchLang("zh-tw")'>中文繁體</a>
                 <a href="javascript:void(0)" clrDropdownItem (click)='switchLanguage("es-es")' [class.lang-selected]='matchLang("es-es")'>Español</a>
                 <a href="javascript:void(0)" clrDropdownItem (click)='switchLanguage("fr-fr")' [class.lang-selected]='matchLang("fr-fr")'>Français</a>
                 <a href="javascript:void(0)" clrDropdownItem (click)='switchLanguage("pt-br")' [class.lang-selected]='matchLang("pt-br")'>Português do Brasil</a>
                 <a href="javascript:void(0)" clrDropdownItem (click)='switchLanguage("tr-tr")' [class.lang-selected]='matchLang("tr-tr")'>Türkçe</a>
+                <a href="javascript:void(0)" clrDropdownItem (click)='switchLanguage("de-de")' [class.lang-selected]='matchLang("de-de")'>Deutsch</a>
             </clr-dropdown-menu>
         </clr-dropdown>
         <div class="nav-divider"></div>
         <clr-dropdown class="dropdown" *ngIf="isSessionValid">
             <button class="nav-text" clrDropdownToggle>
-              <clr-icon shape="user" class="is-inverse user-icon" size="24"></clr-icon>
-              <span>{{accountName}}</span>
-              <clr-icon shape="caret down"></clr-icon>
+                <clr-icon shape="user" class="is-inverse user-icon" size="24"></clr-icon>
+                <span>{{accountName}}</span>
+                <clr-icon shape="caret down"></clr-icon>
             </button>
             <clr-dropdown-menu [clrPosition]="'bottom-right'" *clrIfOpen>
                 <a href="javascript:void(0)" clrDropdownItem (click)="openAccountSettingsModal()">{{'ACCOUNT_SETTINGS.PROFILE' | translate}}</a>
@@ -44,16 +46,5 @@
             </clr-dropdown-menu>
         </clr-dropdown>
         <a href="javascript:void(0)" id="aboutMenu" class="nav-link nav-text nav-about-link" (click)="openAboutDialog()" *ngIf="!isSessionValid">{{'ACCOUNT_SETTINGS.ABOUT' | translate}}</a>
-        <div class="nav-divider"></div>
-        <ng-container *ngFor="let theme of themeArray;let i=index">
-            <ng-container *ngIf="theme.showStyle === styleMode">
-                <a class="nav-link nav-icon theme-select"
-                    (click)="themeChanged(theme)">
-                    <clr-icon size="20" *ngIf="styleMode ==='DARK'" shape="sun" class="is-solid"></clr-icon>
-                    <clr-icon size="20" *ngIf="styleMode ==='LIGHT'" shape="moon" class="is-solid"></clr-icon>
-                    {{ theme.text | translate }}
-                </a>
-            </ng-container>
-        </ng-container>
     </div>
 </clr-header>

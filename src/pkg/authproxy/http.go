@@ -6,7 +6,7 @@ import (
 	"github.com/goharbor/harbor/src/common"
 	"github.com/goharbor/harbor/src/common/dao/group"
 	"github.com/goharbor/harbor/src/common/models"
-	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/lib/log"
 	k8s_api_v1beta1 "k8s.io/api/authentication/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -24,9 +24,8 @@ func TokenReview(rawToken string, authProxyConfig *models.HTTPAuthProxy) (k8s_ap
 		Host: authProxyConfig.TokenReviewEndpoint,
 		ContentConfig: rest.ContentConfig{
 			GroupVersion:         &schema.GroupVersion{},
-			NegotiatedSerializer: serializer.DirectCodecFactory{CodecFactory: scheme.Codecs},
+			NegotiatedSerializer: serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs},
 		},
-		BearerToken:     rawToken,
 		TLSClientConfig: getTLSConfig(authProxyConfig),
 	}
 	authClient, err := rest.RESTClientFor(authClientCfg)
@@ -79,7 +78,8 @@ func getTLSConfig(config *models.HTTPAuthProxy) rest.TLSClientConfig {
 
 // UserFromReviewStatus transform a review status to a user model.
 // Group entries will be populated if needed.
-func UserFromReviewStatus(status k8s_api_v1beta1.TokenReviewStatus) (*models.User, error) {
+func UserFromReviewStatus(status k8s_api_v1beta1.TokenReviewStatus, adminGroups []string) (*models.User, error) {
+
 	if !status.Authenticated {
 		return nil, fmt.Errorf("failed to authenticate the token, error in status: %s", status.Error)
 	}
@@ -94,6 +94,18 @@ func UserFromReviewStatus(status k8s_api_v1beta1.TokenReviewStatus) (*models.Use
 		}
 		log.Debugf("current user's group ID list is %+v", groupIDList)
 		user.GroupIDs = groupIDList
+		if len(adminGroups) > 0 {
+			agm := make(map[string]struct{})
+			for _, ag := range adminGroups {
+				agm[ag] = struct{}{}
+			}
+			for _, ug := range status.User.Groups {
+				if _, ok := agm[ug]; ok {
+					user.AdminRoleInAuth = true
+					break
+				}
+			}
+		}
 	}
 	return user, nil
 

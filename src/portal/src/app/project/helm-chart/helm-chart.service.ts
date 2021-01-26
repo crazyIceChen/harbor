@@ -14,7 +14,7 @@ import { HTTP_GET_OPTIONS, HTTP_JSON_OPTIONS } from "../../../lib/utils/utils";
  *
  **
  * @abstract
- * class RepositoryService
+ * class HelmChartService
  */
 export abstract class HelmChartService {
   /**
@@ -105,7 +105,7 @@ export class HelmChartDefaultService extends HelmChartService {
 
 
   private handleErrorObservable(error: HttpErrorResponse) {
-    return observableThrowError(error.error || error);
+    return observableThrowError(error);
   }
 
   public getHelmCharts(

@@ -19,7 +19,7 @@ import { ConfirmationDialogService } from '../shared/confirmation-dialog/confirm
 import { ConfirmationMessage } from '../shared/confirmation-dialog/confirmation-message';
 import { MessageHandlerService } from '../shared/message-handler/message-handler.service';
 import { SessionService } from '../shared/session.service';
-import { AppConfigService } from '../app-config.service';
+import { AppConfigService } from '../services/app-config.service';
 import { NewUserModalComponent } from './new-user-modal.component';
 import { UserService } from './user.service';
 import { User } from './user';
@@ -50,7 +50,7 @@ import { errorHandler } from "../../lib/utils/shared/shared.utils";
 export class UserComponent implements OnInit, OnDestroy {
     users: User[] = [];
     selectedRow: User[] = [];
-    ISADMNISTRATOR: string = "USER.ENABLE_ADMIN_ACTION";
+    ISADMINISTRATOR: string = "USER.ENABLE_ADMIN_ACTION";
 
     currentTerm: string;
     totalCount: number = 0;
@@ -122,11 +122,11 @@ export class UserComponent implements OnInit, OnDestroy {
             }
         });
         if (usersRole.length && usersRole.every(num => num === 0)) {
-            this.ISADMNISTRATOR = 'USER.ENABLE_ADMIN_ACTION';
+            this.ISADMINISTRATOR = 'USER.ENABLE_ADMIN_ACTION';
             return true;
         }
         if (usersRole.length && usersRole.every(num => num === 1)) {
-            this.ISADMNISTRATOR = 'USER.DISABLE_ADMIN_ACTION';
+            this.ISADMINISTRATOR = 'USER.DISABLE_ADMIN_ACTION';
             return true;
         }
         return false;
@@ -187,7 +187,7 @@ export class UserComponent implements OnInit, OnDestroy {
     changeAdminRole(): void {
         let observableLists: any[] = [];
         if (this.selectedRow.length) {
-            if (this.ISADMNISTRATOR === 'USER.ENABLE_ADMIN_ACTION') {
+            if (this.ISADMINISTRATOR === 'USER.ENABLE_ADMIN_ACTION') {
                 for (let i = 0; i < this.selectedRow.length; i++) {
                     // Double confirm user is existing
                     if (this.selectedRow[i].user_id === 0 || this.isMySelf(this.selectedRow[i].user_id)) {
@@ -200,7 +200,7 @@ export class UserComponent implements OnInit, OnDestroy {
                     observableLists.push(this.userService.updateUserRole(updatedUser));
                 }
             }
-            if (this.ISADMNISTRATOR === 'USER.DISABLE_ADMIN_ACTION') {
+            if (this.ISADMINISTRATOR === 'USER.DISABLE_ADMIN_ACTION') {
                 for (let i = 0; i < this.selectedRow.length; i++) {
                     // Double confirm user is existing
                     if (this.selectedRow[i].user_id === 0 || this.isMySelf(this.selectedRow[i].user_id)) {
@@ -259,6 +259,8 @@ export class UserComponent implements OnInit, OnDestroy {
                 this.selectedRow = [];
                 this.currentTerm = '';
                 this.refresh();
+            }, error => {
+                this.msgHandler.handleError(error);
             });
         }
     }
@@ -287,7 +289,7 @@ export class UserComponent implements OnInit, OnDestroy {
             this.translate.get(message).subscribe(res =>
                 operateChanges(operMessage, OperationState.failure, res)
             );
-            return observableThrowError(message);
+            return observableThrowError(error);
         }));
     }
 
@@ -316,6 +318,9 @@ export class UserComponent implements OnInit, OnDestroy {
 
     // Data loading
     load(state: any): void {
+        if (state && state.page) {
+           this.pageSize = state.page.size;
+        }
         this.selectedRow = [];
         this.onGoing = true;
         this.getUserListByPaging();

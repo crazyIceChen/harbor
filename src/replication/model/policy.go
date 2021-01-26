@@ -16,13 +16,9 @@ package model
 
 import (
 	"fmt"
-	"time"
-
-	"github.com/goharbor/harbor/src/replication/filter"
-
 	"github.com/astaxie/beego/validation"
-	"github.com/goharbor/harbor/src/common/models"
 	"github.com/robfig/cron"
+	"time"
 )
 
 // const definition
@@ -97,7 +93,7 @@ func (p *Policy) Valid(v *validation.Validation) {
 			}
 			if filter.Type == FilterTypeResource {
 				rt := ResourceType(value)
-				if !(rt == ResourceTypeImage || rt == ResourceTypeChart) {
+				if !(rt == ResourceTypeArtifact || rt == ResourceTypeImage || rt == ResourceTypeChart) {
 					v.SetError("filters", fmt.Sprintf("invalid resource filter: %s", value))
 					break
 				}
@@ -149,32 +145,6 @@ type Filter struct {
 	Value interface{} `json:"value"`
 }
 
-// DoFilter filter the filterables
-// The parameter "filterables" must be a pointer points to a slice
-// whose elements must be Filterable. After applying the filter
-// to the "filterables", the result is put back into the variable
-// "filterables"
-func (f *Filter) DoFilter(filterables interface{}) error {
-	var ft filter.Filter
-	switch f.Type {
-	case FilterTypeName:
-		ft = filter.NewRepositoryNameFilter(f.Value.(string))
-	case FilterTypeTag:
-		ft = filter.NewVTagNameFilter(f.Value.(string))
-	case FilterTypeLabel:
-		labels, ok := f.Value.([]string)
-		if ok {
-			ft = filter.NewVTagLabelFilter(labels)
-		}
-	case FilterTypeResource:
-		ft = filter.NewResourceTypeFilter(f.Value.(string))
-	default:
-		return fmt.Errorf("unsupported filter type: %s", f.Type)
-	}
-
-	return filter.DoFilter(filterables, ft)
-}
-
 // TriggerType represents the type of trigger.
 type TriggerType string
 
@@ -197,5 +167,6 @@ type PolicyQuery struct {
 	Namespace    string
 	SrcRegistry  int64
 	DestRegistry int64
-	models.Pagination
+	Page         int64
+	Size         int64
 }

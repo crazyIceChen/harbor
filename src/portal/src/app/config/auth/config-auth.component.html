@@ -283,6 +283,12 @@
                 [disabled]="!currentConfig.http_authproxy_tokenreview_endpoint.editable" />
             <clr-control-error>{{'TOOLTIP.ENDPOINT_FORMAT' | translate}}</clr-control-error>
         </clr-input-container>
+        <clr-input-container>
+            <label  for="HttpAdminGroup">{{'CONFIG.HTTP_AUTH.ADMIN_GROUPS' | translate}}</label>
+            <input autocomplete="off" (blur)="trimSpace($event)" clrInput name="HttpAdminGroup" type="text" #ngHttpAdminGroup="ngModel"
+                   [(ngModel)]="currentConfig.http_authproxy_admin_groups.value" id="HttpAdminGroup" size="35"
+                   [disabled]="disabled(currentConfig.http_authproxy_admin_groups)" />
+        </clr-input-container>
         <clr-checkbox-container clrInline>
             <label for="http_authproxy_verify_cert"
                 class="required">{{'CONFIG.HTTP_AUTH.VERIFY_CERT' | translate}}</label>
@@ -331,7 +337,7 @@
             [(ngModel)]="currentConfig.oidc_endpoint.value" id="oidcEndpoint" size="40"
             [disabled]="disabled(currentConfig.oidc_endpoint)"
             pattern="^([hH][tT]{2}[pP][sS]:\/\/)(.*?)*$" />
-            <clr-control-error>{{'TOOLTIP.OIDC_ENDPOIT_FORMAT' | translate}}</clr-control-error>
+            <clr-control-error>{{'TOOLTIP.OIDC_ENDPOINT_FORMAT' | translate}}</clr-control-error>
         </clr-input-container>
         <clr-input-container>
             <label for="oidcClientId" class="required">{{'CONFIG.OIDC.CLIENT_ID' | translate}}</label>
@@ -360,7 +366,19 @@
                 [(ngModel)]="currentConfig.oidc_groups_claim.value" id="oidcGroupClaim" size="40"
                  [disabled]="disabled(currentConfig.oidc_groups_claim)" />
         </clr-input-container>
-
+        <clr-input-container>
+            <label  for="OIDCAdminGroup">{{'CONFIG.OIDC.OIDC_ADMIN_GROUP' | translate}}
+                <clr-tooltip>
+                    <clr-icon clrTooltipTrigger shape="info-circle" size="24"></clr-icon>
+                    <clr-tooltip-content clrPosition="top-right" clrSize="lg" *clrIfOpen>
+                        <span>{{'CONFIG.OIDC.OIDC_ADMIN_GROUP_INFO' | translate}}</span>
+                    </clr-tooltip-content>
+                </clr-tooltip>
+            </label>
+            <input clrInput name="OIDCAdminGroup" type="text" #ngOIDCAdminGroup="ngModel"
+                [(ngModel)]="currentConfig.oidc_admin_group.value" id="OIDCAdminGroup" size="40"
+                 [disabled]="disabled(currentConfig.oidc_admin_group)" />
+        </clr-input-container>
         <clr-input-container>
                 <label class="required" for="oidcScope">{{'CONFIG.OIDC.SCOPE' | translate}}
                     <clr-tooltip>
@@ -372,26 +390,56 @@
                 </label>
                 <input clrInput name="oidcScope" type="text" #oidcScopeInput="ngModel"
                 [(ngModel)]="currentConfig.oidc_scope.value" id="oidcScope" size="40" required
-                [disabled]="disabled(currentConfig.oidc_scope)" pattern="^(\w+,){0,}openid(,\w+){0,}$" />
+                [disabled]="disabled(currentConfig.oidc_scope)" pattern="^([\w.]+,){0,}openid(,[\w.]+){0,}$"/>
                 <clr-control-error>{{'TOOLTIP.SCOPE_REQUIRED' | translate}}</clr-control-error>
-            </clr-input-container>
-            <clr-checkbox-container>
-                    <label for="oidc_verify_cert">{{'CONFIG.OIDC.OIDC_VERIFYCERT' | translate}}
-                            <clr-tooltip>
-                                    <clr-icon clrTooltipTrigger shape="info-circle" size="24"></clr-icon>
-                                    <clr-tooltip-content clrPosition="top-right" clrSize="lg" *clrIfOpen>
-                                        <span>{{'TOOLTIP.OIDC_VERIFYCERT' | translate}}</span>
-                                    </clr-tooltip-content>
-                                </clr-tooltip>
-                    </label>
-                    <clr-checkbox-wrapper>
-                        <input type="checkbox" clrCheckbox name="oidc_verify_cert" id="oidc_verify_cert"
-                        [disabled]="disabled(currentConfig.oidc_verify_cert)"
-                        [(ngModel)]="currentConfig.oidc_verify_cert.value" />
-                    </clr-checkbox-wrapper>
-                </clr-checkbox-container>
+        </clr-input-container>
+        <clr-checkbox-container>
+                <label for="oidc_verify_cert">{{'CONFIG.OIDC.OIDC_VERIFYCERT' | translate}}
+                        <clr-tooltip>
+                                <clr-icon clrTooltipTrigger shape="info-circle" size="24"></clr-icon>
+                                <clr-tooltip-content clrPosition="top-right" clrSize="lg" *clrIfOpen>
+                                    <span>{{'TOOLTIP.OIDC_VERIFYCERT' | translate}}</span>
+                                </clr-tooltip-content>
+                            </clr-tooltip>
+                </label>
+                <clr-checkbox-wrapper>
+                    <input type="checkbox" clrCheckbox name="oidc_verify_cert" id="oidc_verify_cert"
+                    [disabled]="disabled(currentConfig.oidc_verify_cert)"
+                    [(ngModel)]="currentConfig.oidc_verify_cert.value" />
+                </clr-checkbox-wrapper>
+        </clr-checkbox-container>
+        <clr-checkbox-container>
+            <label for="oidcAutoOnboard">{{'CONFIG.OIDC.OIDC_AUTOONBOARD' | translate}}
+                    <clr-tooltip>
+                            <clr-icon clrTooltipTrigger shape="info-circle" size="24"></clr-icon>
+                            <clr-tooltip-content clrPosition="top-right" clrSize="lg" *clrIfOpen>
+                                <span>{{'TOOLTIP.OIDC_AUTOONBOARD' | translate}}</span>
+                            </clr-tooltip-content>
+                        </clr-tooltip>
+            </label>
+            <clr-checkbox-wrapper>
+                <input type="checkbox" clrCheckbox name="oidcAutoOnboard" id="oidcAutoOnboard"
+                [disabled]="disabled(currentConfig.oidc_auto_onboard)"
+                (change)="changeAutoOnBoard()"
+                [(ngModel)]="currentConfig.oidc_auto_onboard.value" />
+            </clr-checkbox-wrapper>
+        </clr-checkbox-container>         
+        <clr-input-container>
+            <label  for="oidcUserClaim">{{'CONFIG.OIDC.USER_CLAIM' | translate}}
+                <clr-tooltip>
+                    <clr-icon clrTooltipTrigger shape="info-circle" size="24"></clr-icon>
+                    <clr-tooltip-content clrPosition="top-right" clrSize="lg" *clrIfOpen>
+                        <span>{{'TOOLTIP.OIDC_USER_CLAIM' | translate}}</span>
+                    </clr-tooltip-content>
+                </clr-tooltip>
+            </label>
+            <input autocomplete="off" clrInput name="oidcUserClaim" type="text" #oidcUserClaimInput="ngModel"
+                [(ngModel)]="currentConfig.oidc_user_claim.value" id="oidcUserClaim" size="40"
+                [disabled]="!currentConfig.oidc_auto_onboard.value || disabled(currentConfig.oidc_user_claim)" pattern="^[a-zA-Z0-9_-]*$">
+        </clr-input-container>
         <div class="oidc-tip">{{ 'CONFIG.OIDC.OIDC_REDIREC_URL' | translate}}
-            <span>{{redirectUrl}}/c/oidc/callback</span></div>
+            <span>{{redirectUrl}}/c/oidc/callback</span>
+        </div>
     </section>
 </form>
 <div>

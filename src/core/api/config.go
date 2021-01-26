@@ -23,11 +23,9 @@ import (
 	"github.com/goharbor/harbor/src/common/config"
 	"github.com/goharbor/harbor/src/common/config/metadata"
 	"github.com/goharbor/harbor/src/common/dao"
-	"github.com/goharbor/harbor/src/common/security/secret"
-	"github.com/goharbor/harbor/src/common/utils/log"
-	"github.com/goharbor/harbor/src/core/api/models"
+	"github.com/goharbor/harbor/src/common/security"
 	corecfg "github.com/goharbor/harbor/src/core/config"
-	"github.com/goharbor/harbor/src/core/filter"
+	"github.com/goharbor/harbor/src/lib/log"
 )
 
 // ConfigAPI ...
@@ -47,7 +45,7 @@ func (c *ConfigAPI) Prepare() {
 
 	// Only internal container can access /api/internal/configurations
 	if strings.EqualFold(c.Ctx.Request.RequestURI, "/api/internal/configurations") {
-		if _, ok := c.Ctx.Request.Context().Value(filter.SecurCtxKey).(*secret.SecurityContext); !ok {
+		if s, ok := security.FromContext(c.Ctx.Request.Context()); !ok || s.Name() != "secret" {
 			c.SendUnAuthorizedError(errors.New("UnAuthorized"))
 			return
 		}
@@ -149,6 +147,13 @@ func checkUnmodifiable(mgr *config.CfgManager, cfgs map[string]interface{}, keys
 	return
 }
 
+// ScanAllPolicy is represent the json request and object for scan all policy
+// Only for migrating from the legacy schedule.
+type ScanAllPolicy struct {
+	Type  string                 `json:"type"`
+	Param map[string]interface{} `json:"parameter,omitempty"`
+}
+
 // delete sensitive attrs and add editable field to every attr
 func convertForGet(cfg map[string]interface{}) (map[string]*value, error) {
 	result := map[string]*value{}
@@ -162,7 +167,7 @@ func convertForGet(cfg map[string]interface{}) (map[string]*value, error) {
 	}
 
 	if _, ok := cfg[common.ScanAllPolicy]; !ok {
-		cfg[common.ScanAllPolicy] = models.ScanAllPolicy{
+		cfg[common.ScanAllPolicy] = ScanAllPolicy{
 			Type: "none", // For legacy compatible
 		}
 	}

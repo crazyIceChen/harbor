@@ -17,7 +17,8 @@
 }
 
 .harbor-icon {
-  filter: drop-shadow($fill-color1 58px 2px) !important;
+  transform: translateX($harbor-icon-translate-x) !important;
+  filter: drop-shadow($fill-color1 $harbor-icon-drop-shadow-x 2px) !important;
 }
 
 .color-white-dark {
@@ -120,4 +121,129 @@ hbr-tag {
   .color-green {
     color: $light-color-green !important;
   }
+}
+
+.filter-divider {
+  background-color: $filter-divider-bg-color ;
+}
+
+.selectBox {
+  background: $select-back-color !important;
+  color: $select-option-color !important;
+}
+
+.selectBox ul li:hover{
+  background-image: linear-gradient(180deg,$selectBox-option-hover-bg-color-start 0,$selectBox-option-hover-bg-color-end) !important;
+}
+
+.btn-tag-integration {
+  .active {
+    background: $btn-tag-integration-active-bg-color;
+    color: $btn-tag-integration-active-color;
+  }
+}
+
+hbr-result-tip-histogram {
+  .inner {
+    background-color: $hbr-result-tip-histogram-inner-bg-color;
+  }
+}
+
+// style of hbr-artifact-summary component
+@mixin align-text-mixin($values...) {
+  @each $var in $values {
+    &[align="$var"] {
+      text-align: $var;
+    }
+  }
+}
+%code-block {
+  background: $color-ddd;
+  border-radius: 2px;
+  padding: 2px 4px;
+}
+
+:not(pre) > code[class*="language-"], pre[class*="language-"] {
+  background-color: $color-yaml;
+}
+
+.md-div {
+  code:not([class*="language-"]) {
+    @extend %code-block;
+    color: $color-657b83
+  }
+  pre:not([class*="language-"]) {
+    background: $color-fdf6e3;
+    code:not([class*="language-"]) {
+      @extend %code-block;
+      background: transparent;
+    }
+  }
+  table {
+    display: block;
+    width: 100%;
+    overflow: auto;
+    padding: 0;
+    border-spacing: 0;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    td,
+    th {
+      padding: 6px 13px;
+      border: 1px solid $color-ddd;
+      @include align-text-mixin(left, right, center);
+    }
+    tr {
+      &:nth-child(2n) {
+        background-color: $color-f2;
+      }
+    }
+  }
+}
+.table-tag {
+  .tag-thead {
+    .tag-header-color {
+      color: $mode-background-color3;
+    }
+  };
+  .tag-tbody {
+    .tag-tr {
+      .tag-body-color {
+        color: $mode-background-color2;
+      }
+    }
+  }
+
+}
+
+clr-header {
+  background-color: $header-color;
+}
+.clr-page-size-select {
+  z-index: 0!important;
+}
+hbr-copy-input {
+  .command-input {
+    color: $command-input-color;
+    background-color: $command-input-bg-color;
+  }
+}
+artifact-list-tab {
+  .labelBtn {
+     .pull-left {
+       color: $mode-font-color1
+     }
+  }
+  .labelBtn:hover {
+    background-color: $label-hover-bg-color;
+  }
+  .list-filter {
+    li:hover {
+      background-color: $label-hover-bg-color;
+    }
+  }
+}
+
+.nav-divider {
+  background-color: $nav-divider-bg-color;
 }

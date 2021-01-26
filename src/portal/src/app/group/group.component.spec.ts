@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { GroupComponent } from './group.component';
 import { ClarityModule } from '@clr/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -9,7 +9,7 @@ import { GroupService } from "./group.service";
 import { of } from "rxjs";
 import { ConfirmationDialogService } from "./../shared/confirmation-dialog/confirmation-dialog.service";
 import { MessageHandlerService } from '../shared/message-handler/message-handler.service';
-import { AppConfigService } from '../app-config.service';
+import { AppConfigService } from '../services/app-config.service';
 import { OperationService } from "../../lib/components/operation/operation.service";
 
 describe('GroupComponent', () => {
@@ -43,7 +43,7 @@ describe('GroupComponent', () => {
     }
   };
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [GroupComponent],
       imports: [

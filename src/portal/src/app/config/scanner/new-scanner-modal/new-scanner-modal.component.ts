@@ -27,7 +27,7 @@ export class NewScannerModalComponent {
     originValue: any;
     uid: string;
     editScanner: Scanner;
-    @ViewChild(InlineAlertComponent, { static: false }) inlineAlert: InlineAlertComponent;
+    @ViewChild(InlineAlertComponent) inlineAlert: InlineAlertComponent;
     constructor(
         private configScannerService: ConfigScannerService,
         private msgHandler: MessageHandlerService,
@@ -82,6 +82,16 @@ export class NewScannerModalComponent {
         return  this.testMap[this.newScannerFormComponent.newScannerForm.get('url').value];
     }
     get canTestEndpoint(): boolean {
+        if (this.newScannerFormComponent.newScannerForm.get('auth').value === "Basic") {
+            return this.newScannerFormComponent.newScannerForm.get('accessCredential').get('username').valid
+                && this.newScannerFormComponent.newScannerForm.get('accessCredential').get('password').valid;
+        }
+        if (this.newScannerFormComponent.newScannerForm.get('auth').value === "Bearer") {
+            return this.newScannerFormComponent.newScannerForm.get('accessCredential').get('token').valid;
+        }
+        if (this.newScannerFormComponent.newScannerForm.get('auth').value === "APIKey") {
+            return this.newScannerFormComponent.newScannerForm.get('accessCredential').get('apiKey').valid;
+        }
         return !this.onTesting
             && this.newScannerFormComponent
             && !this.newScannerFormComponent.checkOnGoing

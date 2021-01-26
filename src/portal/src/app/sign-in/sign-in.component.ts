@@ -19,11 +19,11 @@ import { SessionService } from '../shared/session.service';
 import { SignInCredential } from '../shared/sign-in-credential';
 import { SignUpComponent } from '../account/sign-up/sign-up.component';
 import { ForgotPasswordComponent } from '../account/password-setting/forgot-password/forgot-password.component';
-import { AppConfigService } from '../app-config.service';
-import { AppConfig } from '../app-config';
+import { AppConfigService } from '../services/app-config.service';
+import { AppConfig } from '../services/app-config';
 import { User } from '../user/user';
 import { CookieService, CookieOptions } from 'ngx-cookie';
-import { SkinableConfig } from "../skinable-config.service";
+import { SkinableConfig } from "../services/skinable-config.service";
 import {ModalEvent} from "../base/modal-event";
 import {modalEvents} from "../base/modal-events.const";
 import {AboutDialogComponent} from "../shared/about-dialog/about-dialog.component";
@@ -54,9 +54,9 @@ export class SignInComponent implements AfterViewChecked, OnInit {
     // Form reference
     signInForm: NgForm;
     @ViewChild('signInForm', {static: true}) currentForm: NgForm;
-    @ViewChild('signupDialog', {static: false}) signUpDialog: SignUpComponent;
-    @ViewChild('forgotPwdDialog', {static: false}) forgotPwdDialog: ForgotPasswordComponent;
-    @ViewChild(AboutDialogComponent, {static: false}) aboutDialog: AboutDialogComponent;
+    @ViewChild('signupDialog') signUpDialog: SignUpComponent;
+    @ViewChild('forgotPwdDialog') forgotPwdDialog: ForgotPasswordComponent;
+    @ViewChild(AboutDialogComponent) aboutDialog: AboutDialogComponent;
 
     // Status flag
     signInStatus: number = signInStatusNormal;
@@ -66,7 +66,7 @@ export class SignInComponent implements AfterViewChecked, OnInit {
         principal: "",
         password: ""
     };
-
+    isCoreServiceAvailable: boolean = true;
     constructor(
         private router: Router,
         private session: SessionService,
@@ -87,7 +87,7 @@ export class SignInComponent implements AfterViewChecked, OnInit {
             }
         }
 
-        // Make sure the updated configuration can be loaded
+        // Before login: Make sure the updated configuration can be loaded
         this.appConfigService.load()
             .subscribe(updatedConfig => this.appConfig = updatedConfig
                 , error => {
@@ -143,10 +143,6 @@ export class SignInComponent implements AfterViewChecked, OnInit {
     }
     public get isOidcLoginMode(): boolean {
         return this.appConfig.auth_mode === CONFIG_AUTH_MODE.OIDC_AUTH;
-    }
-    public get showForgetPwd(): boolean {
-        return this.appConfig.auth_mode !== CONFIG_AUTH_MODE.LDAP_AUTH && this.appConfig.auth_mode !== CONFIG_AUTH_MODE.UAA_AUTH
-            && this.appConfig.auth_mode !== CONFIG_AUTH_MODE.OIDC_AUTH && this.appConfig.auth_mode !== CONFIG_AUTH_MODE.HTTP_AUTH;
     }
     clickRememberMe($event: any): void {
         if ($event && $event.target) {
@@ -258,6 +254,15 @@ export class SignInComponent implements AfterViewChecked, OnInit {
                 } else {
                     this.router.navigateByUrl(this.redirectUrl);
                 }
+                this.isCoreServiceAvailable = true;
+
+                // after login successfully: Make sure the updated configuration can be loaded
+                this.appConfigService.load()
+                    .subscribe(updatedConfig => this.appConfig = updatedConfig
+                        , error => {
+                            // Catch the error
+                            console.error("Failed to load bootstrap options with error: ", error);
+                        });
             }, error => {
                 // 403 oidc login no body;
                 if (this.isOidcLoginMode && error && error.status === 403) {
@@ -268,6 +273,10 @@ export class SignInComponent implements AfterViewChecked, OnInit {
                         window.location.href = redirect_location;
                         return;
                     } catch (error) { }
+                }
+                // core service is not available for error code 5xx
+                if (error && /5[0-9][0-9]/.test(error.status)) {
+                    this.isCoreServiceAvailable = false;
                 }
                 this.handleError(error);
             });

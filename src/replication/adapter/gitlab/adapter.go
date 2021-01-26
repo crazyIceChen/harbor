@@ -1,13 +1,11 @@
 package gitlab
 
 import (
-	"github.com/goharbor/harbor/src/common/utils/log"
-	"github.com/goharbor/harbor/src/common/utils/registry/auth"
+	"github.com/goharbor/harbor/src/lib/log"
 	adp "github.com/goharbor/harbor/src/replication/adapter"
 	"github.com/goharbor/harbor/src/replication/adapter/native"
 	"github.com/goharbor/harbor/src/replication/model"
 	"github.com/goharbor/harbor/src/replication/util"
-	"net/http"
 	"strings"
 )
 
@@ -24,13 +22,18 @@ type factory struct {
 
 // Create ...
 func (f *factory) Create(r *model.Registry) (adp.Adapter, error) {
-	return newAdapter(r)
+	return newAdapter(r), nil
 }
 
 // AdapterPattern ...
 func (f *factory) AdapterPattern() *model.AdapterPattern {
 	return nil
 }
+
+var (
+	_ adp.Adapter          = (*adapter)(nil)
+	_ adp.ArtifactRegistry = (*adapter)(nil)
+)
 
 type adapter struct {
 	*native.Adapter
@@ -41,33 +44,13 @@ type adapter struct {
 	clientGitlabAPI *Client
 }
 
-func newAdapter(registry *model.Registry) (*adapter, error) {
-	var credential auth.Credential
-	if registry.Credential != nil && len(registry.Credential.AccessSecret) != 0 {
-		credential = auth.NewBasicAuthCredential(
-			registry.Credential.AccessKey,
-			registry.Credential.AccessSecret)
-	}
-	authorizer := auth.NewStandardTokenAuthorizer(&http.Client{
-		Transport: util.GetHTTPTransport(registry.Insecure),
-	}, credential)
-
-	dockerRegistryAdapter, err := native.NewAdapterWithCustomizedAuthorizer(&model.Registry{
-		Name:       registry.Name,
-		URL:        registry.URL,
-		Credential: registry.Credential,
-		Insecure:   registry.Insecure,
-	}, authorizer)
-	if err != nil {
-		return nil, err
-	}
-
+func newAdapter(registry *model.Registry) *adapter {
 	return &adapter{
 		registry:        registry,
 		url:             registry.URL,
 		clientGitlabAPI: NewClient(registry),
-		Adapter:         dockerRegistryAdapter,
-	}, nil
+		Adapter:         native.NewAdapter(registry),
+	}
 }
 
 func (a *adapter) Info() (info *model.RegistryInfo, err error) {
@@ -93,36 +76,24 @@ func (a *adapter) Info() (info *model.RegistryInfo, err error) {
 	}, nil
 }
 
-// FetchImages fetches images
-func (a *adapter) FetchImages(filters []*model.Filter) ([]*model.Resource, error) {
+// FetchArtifacts fetches images
+func (a *adapter) FetchArtifacts(filters []*model.Filter) ([]*model.Resource, error) {
 	var resources []*model.Resource
 	var projects []*Project
 	var err error
-	pattern := ""
+	nameFilter := ""
+	tagFilter := ""
 	for _, filter := range filters {
 		if filter.Type == model.FilterTypeName {
-			pattern = filter.Value.(string)
+			nameFilter = filter.Value.(string)
+			break
+		} else if filter.Type == model.FilterTypeTag {
+			tagFilter = filter.Value.(string)
 			break
 		}
 	}
 
-	if len(pattern) > 0 {
-		substrings := strings.Split(pattern, "/")
-		projectPattern := substrings[1]
-		names, ok := util.IsSpecificPathComponent(projectPattern)
-		if ok {
-			for _, name := range names {
-				var projectsByName, err = a.clientGitlabAPI.getProjectsByName(name)
-				if err != nil {
-					return nil, err
-				}
-				if projectsByName == nil {
-					continue
-				}
-				projects = append(projects, projectsByName...)
-			}
-		}
-	}
+	projects = a.getProjectsByPattern(nameFilter)
 	if len(projects) == 0 {
 		projects, err = a.clientGitlabAPI.getProjects()
 		if err != nil {
@@ -131,14 +102,13 @@ func (a *adapter) FetchImages(filters []*model.Filter) ([]*model.Resource, error
 	}
 	var pathPatterns []string
 
-	if paths, ok := util.IsSpecificPath(pattern); ok {
+	if paths, ok := util.IsSpecificPath(nameFilter); ok {
 		pathPatterns = paths
+	} else {
+		pathPatterns = append(pathPatterns, nameFilter)
 	}
 
 	for _, project := range projects {
-		if !existPatterns(project.FullPath, pathPatterns) {
-			continue
-		}
 		repositories, err := a.clientGitlabAPI.getRepositories(project.ID)
 		if err != nil {
 			return nil, err
@@ -159,8 +129,10 @@ func (a *adapter) FetchImages(filters []*model.Filter) ([]*model.Resource, error
 			}
 			tags := []string{}
 			for _, vTag := range vTags {
-				if !existPatterns(vTag.Path, pathPatterns) {
-					continue
+				if len(tagFilter) > 0 {
+					if ok, _ := util.Match(strings.ToLower(vTag.Name), strings.ToLower(tagFilter)); !ok {
+						continue
+					}
 				}
 				tags = append(tags, vTag.Name)
 			}
@@ -184,11 +156,60 @@ func (a *adapter) FetchImages(filters []*model.Filter) ([]*model.Resource, error
 	return resources, nil
 }
 
+func (a *adapter) getProjectsByPattern(pattern string) []*Project {
+	var projects []*Project
+	projectset := make(map[string]bool)
+	var err error
+	if len(pattern) > 0 {
+
+		names, ok := util.IsSpecificPath(pattern)
+		if ok {
+			for _, name := range names {
+				substrings := strings.Split(name, "/")
+				if len(substrings) < 2 {
+					continue
+				}
+				if _, ok := projectset[substrings[1]]; ok {
+					continue
+				}
+				projectset[substrings[1]] = true
+				var projectsByName, err = a.clientGitlabAPI.getProjectsByName(substrings[1])
+				if err != nil {
+					return nil
+				}
+				if projectsByName == nil {
+					continue
+				}
+				projects = append(projects, projectsByName...)
+			}
+		} else {
+			substrings := strings.Split(pattern, "/")
+			if len(substrings) < 2 {
+				return projects
+			}
+			projectName := substrings[1]
+			if projectName == "*" {
+				return projects
+			}
+			projectName = strings.Trim(projectName, "*")
+
+			if strings.Contains(projectName, "*") {
+				return projects
+			}
+			projects, err = a.clientGitlabAPI.getProjectsByName(projectName)
+			if err != nil {
+				return projects
+			}
+		}
+	}
+	return projects
+}
+
 func existPatterns(path string, patterns []string) bool {
 	correct := false
 	if len(patterns) > 0 {
 		for _, pathPattern := range patterns {
-			if strings.HasPrefix(strings.ToLower(path), strings.ToLower(pathPattern)) {
+			if ok, _ := util.Match(strings.ToLower(pathPattern), strings.ToLower(path)); ok {
 				correct = true
 				break
 			}

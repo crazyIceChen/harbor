@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { GcComponent } from './gc.component';
 import { SERVICE_CONFIG, IServiceConfig } from '../../../entities/service.config';
 import { GcApiRepository, GcApiDefaultRepository} from './gc.api.repository';
@@ -10,13 +10,14 @@ import { CronScheduleComponent } from '../../cron-schedule/cron-schedule.compone
 import { CronTooltipComponent } from "../../cron-schedule/cron-tooltip/cron-tooltip.component";
 import { of } from 'rxjs';
 import { GcJobData } from './gcLog';
+import { CURRENT_BASE_HREF } from "../../../utils/utils";
 
 describe('GcComponent', () => {
   let component: GcComponent;
   let fixture: ComponentFixture<GcComponent>;
   let gcRepoService: GcRepoService;
   let config: IServiceConfig = {
-    systemInfoEndpoint: "/api/system/gc"
+    systemInfoEndpoint: CURRENT_BASE_HREF + "/system/gc"
   };
   let mockSchedule = [];
   let mockJobs: GcJobData[] = [
@@ -24,6 +25,7 @@ describe('GcComponent', () => {
     id: 22222,
     schedule: null,
     job_status: 'string',
+    job_parameters: '{"dry_run":true}',
     creation_time: new Date().toDateString(),
     update_time: new Date().toDateString(),
     job_name: 'string',
@@ -43,7 +45,7 @@ describe('GcComponent', () => {
   let spySchedule: jasmine.Spy;
   let spyJobs: jasmine.Spy;
   let spyGcNow: jasmine.Spy;
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       imports: [
         SharedModule

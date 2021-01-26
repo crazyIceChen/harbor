@@ -25,17 +25,19 @@ import { NgForm } from "@angular/forms";
 import { Subscription, throwError as observableThrowError } from "rxjs";
 import { TranslateService } from "@ngx-translate/core";
 
-import { EndpointService } from "../../services/endpoint.service";
+import {EndpointService, HELM_HUB} from "../../services/endpoint.service";
 import { ErrorHandler } from "../../utils/error-handler";
 import { InlineAlertComponent } from "../inline-alert/inline-alert.component";
 import { Endpoint, PingEndpoint } from "../../services/interface";
-import { clone, compareValue, isEmptyObject } from "../../utils/utils";
+import { clone, compareValue, CURRENT_BASE_HREF, isEmptyObject } from "../../utils/utils";
 import { HttpClient } from "@angular/common/http";
 import { catchError } from "rxjs/operators";
+import { AppConfigService } from '../../../app/services/app-config.service';
 
 const FAKE_PASSWORD = "rjGcfuRu";
 const FAKE_JSON_KEY = "No Change";
-const METADATA_URL = "/api/replication/adapterinfos";
+const METADATA_URL = CURRENT_BASE_HREF + "/replication/adapterinfos";
+const FIXED_PATTERN_TYPE: string = "EndpointPatternTypeFix";
 @Component({
   selector: "hbr-create-edit-endpoint",
   templateUrl: "./create-edit-endpoint.component.html",
@@ -57,13 +59,13 @@ export class CreateEditEndpointComponent
   selectedType: string;
   initVal: Endpoint;
   targetForm: NgForm;
-  @ViewChild("targetForm", {static: false}) currentForm: NgForm;
+  @ViewChild("targetForm") currentForm: NgForm;
   targetEndpoint;
   testOngoing: boolean;
   onGoing: boolean;
   endpointId: number | string;
 
-  @ViewChild(InlineAlertComponent, {static: false}) inlineAlert: InlineAlertComponent;
+  @ViewChild(InlineAlertComponent) inlineAlert: InlineAlertComponent;
 
   @Output() reload = new EventEmitter<boolean>();
 
@@ -78,21 +80,31 @@ export class CreateEditEndpointComponent
     private errorHandler: ErrorHandler,
     private translateService: TranslateService,
     private ref: ChangeDetectorRef,
-    private http: HttpClient
+    private http: HttpClient,
+    private appConfigService: AppConfigService,
   ) {}
 
   ngOnInit(): void {
+    this.getAdapters();
+    this.getAdapterInfo();
+  }
+  getAdapters() {
     this.endpointService.getAdapters().subscribe(
       adapters => {
         this.adapterList = adapters || [];
+        if (!this.appConfigService.getConfig().with_chartmuseum) { // disable helm-hub
+          for (let i = 0; i < this.adapterList.length; i++) {
+            if (this.adapterList[i] === HELM_HUB) {
+              this.adapterList.splice(i, 1);
+            }
+          }
+        }
       },
       error => {
         this.errorHandler.error(error);
       }
     );
-    this.getAdapterInfo();
   }
-
   getAdapterInfo() {
     this.http.get(METADATA_URL)
         .pipe(catchError(error => observableThrowError(error)))
@@ -258,6 +270,9 @@ export class CreateEditEndpointComponent
       this.endpointList = this.adapterInfo[selectValue].endpoint_pattern.endpoints;
       if (this.endpointList.length === 1) {
         this.target.url = this.endpointList[0].value;
+      }
+      if (this.adapterInfo[selectValue].endpoint_pattern.endpoint_type === FIXED_PATTERN_TYPE) {
+        this.urlDisabled = true;
       }
     } else {
       this.endpointList = [];
@@ -464,5 +479,13 @@ export class CreateEditEndpointComponent
       }
     }
     return changes;
+  }
+
+  getAdapterText(adapter: string): string {
+    return this.endpointService.getAdapterText(adapter);
+  }
+  // hide helm hub option when creating registry
+  shouldHide(adapter: string) {
+    return adapter === HELM_HUB && !this.endpointId;
   }
 }

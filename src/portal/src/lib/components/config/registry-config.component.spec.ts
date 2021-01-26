@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, async } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 
 import { SharedModule } from '../../utils/shared/shared.module';
 import { ErrorHandler } from '../../utils/error-handler/error-handler';
@@ -19,10 +19,11 @@ import {
   ScanningResultDefaultService,
   SystemInfoService,
   SystemInfoDefaultService,
-  SystemInfo, SystemCVEWhitelist
+  SystemInfo, SystemCVEAllowlist
 } from '../../services';
 import { Configuration } from './config';
 import { of } from 'rxjs';
+import { CURRENT_BASE_HREF } from "../../utils/utils";
 
 describe('RegistryConfigComponent (inline template)', () => {
 
@@ -41,12 +42,12 @@ describe('RegistryConfigComponent (inline template)', () => {
     }
   };
   let config: IServiceConfig = {
-    configurationEndpoint: '/api/configurations/testing'
+    configurationEndpoint: CURRENT_BASE_HREF + '/configurations/testing'
   };
   let mockSystemInfo: SystemInfo = {
     "with_notary": true,
     "with_admiral": false,
-    "with_clair": true,
+    "with_trivy": true,
     "admiral_endpoint": "NA",
     "auth_mode": "db_auth",
     "registry_url": "10.112.122.56",
@@ -56,13 +57,13 @@ describe('RegistryConfigComponent (inline template)', () => {
     "harbor_version": "v1.1.1-rc1-160-g565110d",
     "next_scan_all": 0
   };
-  let mockSystemWhitelist: SystemCVEWhitelist = {
+  let mockSystemAllowlist: SystemCVEAllowlist = {
     "expires_at": 1561996800,
     "id": 1,
     "items": [],
     "project_id": 0
   };
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       imports: [
         SharedModule
@@ -95,11 +96,11 @@ describe('RegistryConfigComponent (inline template)', () => {
     systemInfoService = fixture.debugElement.injector.get(SystemInfoService);
     spy = spyOn(cfgService, 'getConfigurations').and.returnValue(of(mockConfig));
     spySystemInfo = spyOn(systemInfoService, 'getSystemInfo').and.returnValue(of(mockSystemInfo));
-    spySystemInfo = spyOn(systemInfoService, 'getSystemWhitelist').and.returnValue(of(mockSystemWhitelist));
+    spySystemInfo = spyOn(systemInfoService, 'getSystemAllowlist').and.returnValue(of(mockSystemAllowlist));
     fixture.detectChanges();
   });
 
-  it('should render configurations to the view', async(() => {
+  it('should render configurations to the view', waitForAsync(() => {
     expect(spy.calls.count()).toEqual(1);
     expect(spySystemInfo.calls.count()).toEqual(1);
     fixture.detectChanges();

@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { ClarityModule } from '@clr/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
@@ -6,7 +6,7 @@ import { UserService } from './user.service';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ConfirmationDialogService } from '../shared/confirmation-dialog/confirmation-dialog.service';
 import { MessageHandlerService } from '../shared/message-handler/message-handler.service';
-import { AppConfigService } from '../app-config.service';
+import { AppConfigService } from '../services/app-config.service';
 import { SessionService } from '../shared/session.service';
 import { UserComponent } from './user.component';
 import { OperationService } from "../../lib/components/operation/operation.service";
@@ -27,7 +27,7 @@ describe('UserComponent', () => {
         handleError: function () { }
     };
 
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             declarations: [UserComponent],
             imports: [

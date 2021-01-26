@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/pkg/errors"
+	"github.com/goharbor/harbor/src/lib/errors"
 )
 
 // bearerAuthorizer authorizes the request by adding `Authorization Bearer credential` header
@@ -31,6 +31,7 @@ type bearerAuthorizer struct {
 func (ba *bearerAuthorizer) Authorize(req *http.Request) error {
 	if req != nil && len(ba.accessCred) > 0 {
 		req.Header.Add(authorization, fmt.Sprintf("%s %s", ba.typeID, ba.accessCred))
+		return nil
 	}
 
 	return errors.Errorf("%s: %s", ba.typeID, "missing data to authorize request")

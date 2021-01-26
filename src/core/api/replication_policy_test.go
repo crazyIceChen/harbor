@@ -15,6 +15,7 @@
 package api
 
 import (
+	"github.com/goharbor/harbor/src/lib/q"
 	"net/http"
 	"testing"
 
@@ -29,7 +30,7 @@ type fakedRegistryManager struct{}
 func (f *fakedRegistryManager) Add(*model.Registry) (int64, error) {
 	return 0, nil
 }
-func (f *fakedRegistryManager) List(...*model.RegistryQuery) (int64, []*model.Registry, error) {
+func (f *fakedRegistryManager) List(query *q.Query) (int64, []*model.Registry, error) {
 	return 0, nil, nil
 }
 func (f *fakedRegistryManager) Get(id int64) (*model.Registry, error) {
@@ -50,6 +51,50 @@ func (f *fakedRegistryManager) Remove(int64) error {
 	return nil
 }
 func (f *fakedRegistryManager) HealthCheck() error {
+	return nil
+}
+
+type fakedPolicyManager struct{}
+
+func (f *fakedPolicyManager) Create(*model.Policy) (int64, error) {
+	return 0, nil
+}
+func (f *fakedPolicyManager) List(...*model.PolicyQuery) (int64, []*model.Policy, error) {
+	return 0, nil, nil
+}
+func (f *fakedPolicyManager) Get(id int64) (*model.Policy, error) {
+	if id == 1 {
+		return &model.Policy{
+			ID:      1,
+			Enabled: true,
+			SrcRegistry: &model.Registry{
+				ID: 1,
+			},
+		}, nil
+	}
+	if id == 2 {
+		return &model.Policy{
+			ID:      2,
+			Enabled: false,
+			SrcRegistry: &model.Registry{
+				ID: 1,
+			},
+		}, nil
+	}
+	return nil, nil
+}
+func (f *fakedPolicyManager) GetByName(name string) (*model.Policy, error) {
+	if name == "duplicate_name" {
+		return &model.Policy{
+			Name: "duplicate_name",
+		}, nil
+	}
+	return nil, nil
+}
+func (f *fakedPolicyManager) Update(*model.Policy) error {
+	return nil
+}
+func (f *fakedPolicyManager) Remove(int64) error {
 	return nil
 }
 

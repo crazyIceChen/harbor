@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { InlineAlertComponent } from './inline-alert.component';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
@@ -8,11 +8,14 @@ import { FormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of } from 'rxjs';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { MessageHandlerService } from '../message-handler/message-handler.service';
+import { ErrorHandler } from '../../../lib/utils/error-handler';
+
 describe('InlineAlertComponent', () => {
     let component: InlineAlertComponent;
     let fixture: ComponentFixture<InlineAlertComponent>;
 
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             schemas: [
                 CUSTOM_ELEMENTS_SCHEMA
@@ -28,7 +31,8 @@ describe('InlineAlertComponent', () => {
             ],
             declarations: [InlineAlertComponent],
             providers: [
-                TranslateService
+                TranslateService,
+                ErrorHandler
             ]
         })
             .compileComponents();

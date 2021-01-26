@@ -2,18 +2,18 @@
 import os, subprocess, shutil
 from pathlib import Path
 from subprocess import DEVNULL
+import logging
 
-from g import DEFAULT_GID, DEFAULT_UID
+from g import DEFAULT_GID, DEFAULT_UID, shared_cert_dir, storage_ca_bundle_filename, internal_tls_dir, internal_ca_filename
 from .misc import (
     mark_file,
     generate_random_string,
     check_permission,
-    stat_decorator)
+    stat_decorator,
+    get_realpath)
 
 SSL_CERT_PATH = os.path.join("/etc/cert", "server.crt")
 SSL_CERT_KEY_PATH = os.path.join("/etc/cert", "server.key")
-
-secret_keys_dir = '/secret/keys'
 
 def _get_secret(folder, filename, length=16):
     key_file = os.path.join(folder, filename)
@@ -52,8 +52,21 @@ def create_root_cert(subj, key_path="./k.key", cert_path="./cert.crt"):
    return subprocess.call(["/usr/bin/openssl", "req", "-new", "-x509", "-key", key_path,\
         "-out", cert_path, "-days", "3650", "-subj", subj], stdout=DEVNULL, stderr=subprocess.STDOUT)
 
+def create_ext_file(cn, ext_filename):
+    with open(ext_filename, 'w') as f:
+        f.write("subjectAltName = DNS.1:{}".format(cn))
+
+def san_existed(cert_path):
+    try:
+        return len(subprocess.check_output(
+            ["/usr/bin/openssl", "x509", "-in",cert_path, "-noout", "-ext", "subjectAltName"]
+            )) > 0
+    except subprocess.CalledProcessError:
+        pass
+    return False
+
 @stat_decorator
-def create_cert(subj, ca_key, ca_cert, key_path="./k.key", cert_path="./cert.crt"):
+def create_cert(subj, ca_key, ca_cert, key_path="./k.key", cert_path="./cert.crt", extfile='extfile.cnf'):
     cert_dir = os.path.dirname(cert_path)
     csr_path = os.path.join(cert_dir, "tmp.csr")
     rc = subprocess.call(["/usr/bin/openssl", "req", "-newkey", "rsa:4096", "-nodes","-sha256","-keyout", key_path,\
@@ -61,7 +74,8 @@ def create_cert(subj, ca_key, ca_cert, key_path="./k.key", cert_path="./cert.crt
     if rc != 0:
         return rc
     return subprocess.call(["/usr/bin/openssl", "x509", "-req", "-days", "3650", "-in", csr_path, "-CA", \
-        ca_cert, "-CAkey", ca_key, "-CAcreateserial", "-out", cert_path], stdout=DEVNULL, stderr=subprocess.STDOUT)
+        ca_cert, "-CAkey", ca_key, "-CAcreateserial", "-extfile", extfile ,"-out", cert_path],
+        stdout=DEVNULL, stderr=subprocess.STDOUT)
 
 
 def openssl_installed():
@@ -72,7 +86,7 @@ def openssl_installed():
     return True
 
 
-def prepare_ca(
+def prepare_registry_ca(
     private_key_pem_path: Path,
     root_crt_path: Path,
     old_private_key_pem_path: Path,
@@ -98,3 +112,34 @@ def prepare_ca(
 
     if not check_permission(private_key_pem_path, uid=DEFAULT_UID, gid=DEFAULT_GID):
         os.chown(private_key_pem_path, DEFAULT_UID, DEFAULT_GID)
+
+
+def prepare_trust_ca(config_dict):
+    if shared_cert_dir.exists():
+        shutil.rmtree(shared_cert_dir)
+    shared_cert_dir.mkdir(parents=True, exist_ok=True)
+
+    internal_ca_src = internal_tls_dir.joinpath(internal_ca_filename)
+    ca_bundle_src = config_dict.get('registry_custom_ca_bundle_path')
+    for src_path, dst_filename in (
+        (internal_ca_src, internal_ca_filename),
+        (ca_bundle_src, storage_ca_bundle_filename)):
+        logging.info('copy {} to shared trust ca dir as name {} ...'.format(src_path, dst_filename))
+        # check if source file valied
+        if not src_path:
+            continue
+        real_src_path = get_realpath(str(src_path))
+        if not real_src_path.exists():
+            logging.info('ca file {} is not exist'.format(real_src_path))
+            continue
+        if not real_src_path.is_file():
+            logging.info('{} is not file'.format(real_src_path))
+            continue
+
+        dst_path = shared_cert_dir.joinpath(dst_filename)
+
+        # copy src to dst
+        shutil.copy2(real_src_path, dst_path)
+
+        # change ownership and permission
+        mark_file(dst_path, mode=0o644)

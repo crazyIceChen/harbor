@@ -15,7 +15,7 @@ import { Component, OnInit, HostListener, AfterViewInit, OnDestroy, ChangeDetect
 import { ActivatedRoute, Router } from '@angular/router';
 import { Project } from '../project';
 import { SessionService } from '../../shared/session.service';
-import { AppConfigService } from "../../app-config.service";
+import { AppConfigService } from "../../services/app-config.service";
 import { forkJoin, Subject, Subscription } from "rxjs";
 import { UserPermissionService, USERSTATICPERMISSION } from "../../../lib/services";
 import { ErrorHandler } from "../../../lib/utils/error-handler";
@@ -47,6 +47,7 @@ export class ProjectDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   hasTagRetentionPermission: boolean;
   hasWebhookListPermission: boolean;
   hasScannerReadPermission: boolean;
+  hasP2pProviderReadPermission: boolean;
   tabLinkNavList = [
     {
       linkName: "summary",
@@ -85,15 +86,15 @@ export class ProjectDetailComponent implements OnInit, AfterViewInit, OnDestroy 
       permissions: () => this.hasScannerReadPermission
     },
     {
-      linkName: "configs",
+      linkName: "p2p-provider",
       tabLinkInOverflow: false,
-      showTabName: "PROJECT_DETAIL.CONFIG",
-      permissions: () => this.isSessionValid && this.hasConfigurationListPermission
+      showTabName: "P2P_PROVIDER.P2P_PROVIDER",
+      permissions: () => this.hasP2pProviderReadPermission
     },
     {
       linkName: "tag-strategy",
       tabLinkInOverflow: false,
-      showTabName: "PROJECT_DETAIL.TAG_STRATEGY",
+      showTabName: "PROJECT_DETAIL.POLICY",
       permissions: () => this.hasTagRetentionPermission
     },
     {
@@ -113,11 +114,18 @@ export class ProjectDetailComponent implements OnInit, AfterViewInit, OnDestroy 
       tabLinkInOverflow: false,
       showTabName: "PROJECT_DETAIL.LOGS",
       permissions: () => this.hasLogListPermission
+    },
+    {
+      linkName: "configs",
+      tabLinkInOverflow: false,
+      showTabName: "PROJECT_DETAIL.CONFIG",
+      permissions: () => this.isSessionValid && this.hasConfigurationListPermission
     }
   ];
   previousWindowWidth: number;
   private _subject = new Subject<string>();
   private _subscription: Subscription;
+  isProxyCacheProject: boolean = false;
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -129,6 +137,9 @@ export class ProjectDetailComponent implements OnInit, AfterViewInit, OnDestroy 
     this.hasSignedIn = this.sessionService.getCurrentUser() !== null;
     this.route.data.subscribe(data => {
       this.currentProject = <Project>data['projectResolver'];
+      if (this.currentProject.registry_id) {
+        this.isProxyCacheProject = true;
+      }
       this.isMember = this.currentProject.is_member;
       this.roleName = this.currentProject.role_name;
     });
@@ -189,12 +200,14 @@ export class ProjectDetailComponent implements OnInit, AfterViewInit, OnDestroy 
       USERSTATICPERMISSION.WEBHOOK.KEY, USERSTATICPERMISSION.WEBHOOK.VALUE.LIST));
     permissionsList.push(this.userPermissionService.getPermission(projectId,
       USERSTATICPERMISSION.SCANNER.KEY, USERSTATICPERMISSION.SCANNER.VALUE.READ));
+    permissionsList.push(this.userPermissionService.getPermission(projectId,
+      USERSTATICPERMISSION.P2P_PROVIDER.KEY, USERSTATICPERMISSION.P2P_PROVIDER.VALUE.READ));
 
     forkJoin(...permissionsList).subscribe(Rules => {
       [this.hasProjectReadPermission, this.hasLogListPermission, this.hasConfigurationListPermission, this.hasMemberListPermission
         , this.hasLabelListPermission, this.hasRepositoryListPermission, this.hasHelmChartsListPermission, this.hasRobotListPermission
         , this.hasLabelCreatePermission, this.hasTagRetentionPermission, this.hasWebhookListPermission,
-      this.hasScannerReadPermission] = Rules;
+      this.hasScannerReadPermission, this.hasP2pProviderReadPermission] = Rules;
     }, error => this.errorHandler.error(error));
   }
 

@@ -19,14 +19,14 @@ import (
 
 	"github.com/goharbor/harbor/src/common/models"
 	ldapUtils "github.com/goharbor/harbor/src/common/utils/ldap"
-	"github.com/goharbor/harbor/src/common/utils/log"
 	"github.com/goharbor/harbor/src/core/auth"
+	"github.com/goharbor/harbor/src/lib/log"
 
 	"errors"
 	"strings"
 
+	goldap "github.com/go-ldap/ldap/v3"
 	"github.com/goharbor/harbor/src/core/config"
-	goldap "gopkg.in/ldap.v2"
 )
 
 // LdapAPI handles requesst to /api/ldap/ping /api/ldap/user/search /api/ldap/user/import

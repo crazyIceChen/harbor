@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { ClarityModule } from '@clr/angular';
 import { FormsModule } from '@angular/forms';
 import { AddRuleComponent } from './add-rule.component';
@@ -9,6 +9,8 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { InlineAlertComponent } from "../../../../shared/inline-alert/inline-alert.component";
 import { ImmutableRetentionRule } from "../../tag-retention/retention";
+import { ErrorHandler } from '../../../../../lib/utils/error-handler';
+
 describe('AddRuleComponent', () => {
   let component: AddRuleComponent;
   let fixture: ComponentFixture<AddRuleComponent>;
@@ -36,8 +38,10 @@ describe('AddRuleComponent', () => {
       ]
     }
   };
-
-  beforeEach(async(() => {
+  const mockErrorHandler = {
+    handleErrorPopupUnauthorized: () => {}
+  };
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [AddRuleComponent, InlineAlertComponent],
       schemas: [
@@ -51,7 +55,11 @@ describe('AddRuleComponent', () => {
         TranslateModule.forRoot()
       ],
       providers: [
-        ImmutableTagService
+        ImmutableTagService,
+        ErrorHandler,
+        {
+          provide: ErrorHandler, useValue: mockErrorHandler
+        }
       ]
     })
       .compileComponents();
@@ -75,7 +83,7 @@ describe('AddRuleComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
-  it("should rightly display default repositories and tag", async(() => {
+  it("should rightly display default repositories and tag", waitForAsync(() => {
     fixture.detectChanges();
 
     fixture.whenStable().then(() => {
@@ -89,7 +97,7 @@ describe('AddRuleComponent', () => {
       expect(elTag.value.trim()).toEqual("**");
     });
   }));
-  it("should rightly close", async(() => {
+  it("should rightly close", waitForAsync(() => {
     fixture.detectChanges();
     let elRep: HTMLButtonElement = fixture.nativeElement.querySelector("#close-btn");
     elRep.dispatchEvent(new Event('click'));
@@ -99,7 +107,7 @@ describe('AddRuleComponent', () => {
         expect(component.addRuleOpened).toEqual(false);
     });
   }));
-  it("should be validating repeat rule ", async(() => {
+  it("should be validating repeat rule ", waitForAsync(() => {
     fixture.detectChanges();
     component.rules = [mockRule];
     const elRep: HTMLButtonElement = fixture.nativeElement.querySelector("#add-edit-btn");

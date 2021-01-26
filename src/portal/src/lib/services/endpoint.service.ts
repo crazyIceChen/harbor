@@ -6,11 +6,33 @@ import { IServiceConfig, SERVICE_CONFIG } from "../entities/service.config";
 import {
   buildHttpRequestOptions,
   HTTP_JSON_OPTIONS,
-  HTTP_GET_OPTIONS
+  HTTP_GET_OPTIONS, CURRENT_BASE_HREF
 } from "../utils/utils";
 import { RequestQueryParams } from "./RequestQueryParams";
 import { Endpoint, ReplicationRule, PingEndpoint } from "./interface";
 import { catchError, map } from "rxjs/operators";
+
+const ADAPTERS_MAP = {
+  "ali-acr": "Alibaba ACR",
+  "aws-ecr": "Aws ECR",
+  "azure-acr": "Azure ACR",
+  "docker-hub": "Docker Hub",
+  "docker-registry": "Docker Registry",
+  "gitlab": "Gitlab",
+  "google-gcr": "Google GCR",
+  "harbor": "Harbor",
+  "helm-hub": "Helm Hub",
+  "artifact-hub": "Artifact Hub",
+  "huawei-SWR": "Huawei SWR",
+  "jfrog-artifactory": "JFrog Artifactory",
+  "quay": "Quay",
+  "dtr": "DTR",
+  "tencent-tcr": "Tencent TCR",
+  "github-ghcr": "Github GHCR"
+};
+
+export const HELM_HUB: string = "helm-hub";
+
 
 
 /**
@@ -125,6 +147,8 @@ export abstract class EndpointService {
   abstract getEndpointWithReplicationRules(
     endpointId: number | string
   ): Observable<any>;
+
+  abstract getAdapterText(adapter: string): string;
 }
 
 /**
@@ -145,7 +169,7 @@ export class EndpointDefaultService extends EndpointService {
     super();
     this._endpointUrl = config.targetBaseEndpoint
       ? config.targetBaseEndpoint
-      : "/api/registries";
+      : CURRENT_BASE_HREF + "/registries";
   }
 
   public getEndpoints(
@@ -180,7 +204,7 @@ export class EndpointDefaultService extends EndpointService {
 
   public getAdapters(): Observable<any> {
     return this.http
-    .get(`/api/replication/adapters`)
+    .get(`${ CURRENT_BASE_HREF }/replication/adapters`)
     .pipe(catchError(error => observableThrowError(error)));
 }
 
@@ -247,5 +271,12 @@ export class EndpointDefaultService extends EndpointService {
       .get(requestUrl, HTTP_GET_OPTIONS)
       .pipe(map(response => response as ReplicationRule[])
       , catchError(error => observableThrowError(error)));
+  }
+
+  getAdapterText(adapter: string): string {
+    if (ADAPTERS_MAP && ADAPTERS_MAP[adapter]) {
+      return ADAPTERS_MAP[adapter];
+    }
+    return adapter;
   }
 }

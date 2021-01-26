@@ -1,11 +1,11 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { SessionService } from '../shared/session.service';
 import { ConfirmationDialogService } from '../shared/confirmation-dialog/confirmation-dialog.service';
 import { MessageHandlerService } from '../shared/message-handler/message-handler.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ClarityModule } from "@clr/angular";
-import { AppConfigService } from '../app-config.service';
+import { AppConfigService } from '../services/app-config.service';
 import { ConfigurationService } from './config.service';
 import { ConfigurationComponent } from './config.component';
 import { of } from 'rxjs';
@@ -45,7 +45,7 @@ describe('ConfigurationComponent', () => {
         updateAccountSettings: () => of(null),
         renameAdmin: () => of(null),
     };
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             imports: [
                 TranslateModule.forRoot(),

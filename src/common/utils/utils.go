@@ -22,11 +22,12 @@ import (
 	"net"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/lib/log"
 )
 
 // ParseEndpoint parses endpoint to a URL
@@ -63,10 +64,9 @@ func ParseRepository(repository string) (project, rest string) {
 	return
 }
 
-// GenerateRandomString generates a random string
-func GenerateRandomString() string {
-	length := 32
-	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+// GenerateRandomStringWithLen generates a random string with length
+func GenerateRandomStringWithLen(length int) string {
+	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	l := len(chars)
 	result := make([]byte, length)
 	_, err := rand.Read(result)
@@ -79,13 +79,18 @@ func GenerateRandomString() string {
 	return string(result)
 }
 
+// GenerateRandomString generate a random string with 32 byte length
+func GenerateRandomString() string {
+	return GenerateRandomStringWithLen(32)
+}
+
 // TestTCPConn tests TCP connection
 // timeout: the total time before returning if something is wrong
 // with the connection, in second
 // interval: the interval time for retring after failure, in second
 func TestTCPConn(addr string, timeout, interval int) error {
-	success := make(chan int)
-	cancel := make(chan int)
+	success := make(chan int, 1)
+	cancel := make(chan int, 1)
 
 	go func() {
 		n := 1
@@ -278,4 +283,15 @@ func ParseJSONInt(value interface{}) (int, bool) {
 	default:
 		return 0, false
 	}
+}
+
+// FindNamedMatches returns named matches of the regexp groups
+func FindNamedMatches(regex *regexp.Regexp, str string) map[string]string {
+	match := regex.FindStringSubmatch(str)
+
+	results := map[string]string{}
+	for i, name := range match {
+		results[regex.SubexpNames()[i]] = name
+	}
+	return results
 }

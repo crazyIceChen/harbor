@@ -19,12 +19,13 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/goharbor/harbor/src/pkg/q"
+	sc "github.com/goharbor/harbor/src/controller/scanner"
+	"github.com/goharbor/harbor/src/lib/q"
 	"github.com/goharbor/harbor/src/pkg/scan/dao/scanner"
+	scannertesting "github.com/goharbor/harbor/src/testing/controller/scanner"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	sc "github.com/goharbor/harbor/src/pkg/scan/api/scanner"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -33,7 +34,7 @@ type ProScannerAPITestSuite struct {
 	suite.Suite
 
 	originC sc.Controller
-	mockC   *MockScannerAPIController
+	mockC   *scannertesting.Controller
 }
 
 // TestProScannerAPI is the entry of ProScannerAPITestSuite
@@ -44,7 +45,7 @@ func TestProScannerAPI(t *testing.T) {
 // SetupSuite prepares testing env
 func (suite *ProScannerAPITestSuite) SetupTest() {
 	suite.originC = sc.DefaultController
-	m := &MockScannerAPIController{}
+	m := &scannertesting.Controller{}
 	sc.DefaultController = m
 
 	suite.mockC = m
@@ -58,7 +59,7 @@ func (suite *ProScannerAPITestSuite) TearDownTest() {
 
 // TestScannerAPIProjectScanner tests the API of getting/setting project level scanner
 func (suite *ProScannerAPITestSuite) TestScannerAPIProjectScanner() {
-	suite.mockC.On("SetRegistrationByProject", int64(1), "uuid").Return(nil)
+	suite.mockC.On("SetRegistrationByProject", mock.Anything, int64(1), "uuid").Return(nil)
 
 	// Set
 	body := make(map[string]interface{}, 1)
@@ -80,7 +81,7 @@ func (suite *ProScannerAPITestSuite) TestScannerAPIProjectScanner() {
 		Description: "JUST FOR TEST",
 		URL:         "https://a.b.c",
 	}
-	suite.mockC.On("GetRegistrationByProject", int64(1)).Return(r, nil)
+	suite.mockC.On("GetRegistrationByProject", mock.Anything, int64(1)).Return(r, nil)
 
 	// Get
 	rr := &scanner.Registration{}

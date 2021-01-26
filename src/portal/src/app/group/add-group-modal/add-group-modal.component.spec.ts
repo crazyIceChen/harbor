@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { ClarityModule } from '@clr/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectorRef } from '@angular/core';
@@ -7,7 +7,7 @@ import { GroupService } from "../group.service";
 import { MessageHandlerService } from "./../../shared/message-handler/message-handler.service";
 import { SessionService } from "./../../shared/session.service";
 import { UserGroup } from "./../group";
-import { AppConfigService } from "../../app-config.service";
+import { AppConfigService } from "../../services/app-config.service";
 import { AddGroupModalComponent } from './add-group-modal.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
@@ -33,7 +33,7 @@ describe('AddGroupModalComponent', () => {
   };
   let fakeMessageHandlerService = null;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       declarations: [AddGroupModalComponent],
       imports: [

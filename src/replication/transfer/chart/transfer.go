@@ -17,7 +17,7 @@ package chart
 import (
 	"errors"
 
-	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/lib/log"
 	"github.com/goharbor/harbor/src/replication/adapter"
 	"github.com/goharbor/harbor/src/replication/model"
 	trans "github.com/goharbor/harbor/src/replication/transfer"
@@ -37,8 +37,9 @@ func factory(logger trans.Logger, stopFunc trans.StopFunc) (trans.Transfer, erro
 }
 
 type chart struct {
-	name    string
-	version string
+	name       string
+	version    string
+	contentURL string
 }
 
 type transfer struct {
@@ -57,27 +58,30 @@ func (t *transfer) Transfer(src *model.Resource, dst *model.Resource) error {
 	// delete the chart on destination registry
 	if dst.Deleted {
 		return t.delete(&chart{
-			name:    dst.Metadata.GetResourceName(),
-			version: dst.Metadata.Vtags[0],
+			name:    dst.Metadata.Repository.Name,
+			version: dst.Metadata.Artifacts[0].Tags[0],
 		})
 	}
 
+	var contentURL string
+	if len(src.ExtendedInfo) > 0 {
+		contentURL = src.ExtendedInfo["contentURL"].(string)
+	}
+
 	srcChart := &chart{
-		name:    src.Metadata.GetResourceName(),
-		version: src.Metadata.Vtags[0],
+		name:       src.Metadata.Repository.Name,
+		version:    src.Metadata.Artifacts[0].Tags[0],
+		contentURL: contentURL,
 	}
 	dstChart := &chart{
-		name:    dst.Metadata.GetResourceName(),
-		version: dst.Metadata.Vtags[0],
+		name:    dst.Metadata.Repository.Name,
+		version: dst.Metadata.Artifacts[0].Tags[0],
 	}
 	// copy the chart from source registry to the destination
 	return t.copy(srcChart, dstChart, dst.Override)
 }
 
 func (t *transfer) initialize(src, dst *model.Resource) error {
-	if t.shouldStop() {
-		return nil
-	}
 	// create client for source registry
 	srcReg, err := createRegistry(src.Registry)
 	if err != nil {
@@ -151,7 +155,7 @@ func (t *transfer) copy(src, dst *chart, override bool) error {
 	}
 
 	// copy the chart between the source and destination registries
-	chart, err := t.src.DownloadChart(src.name, src.version)
+	chart, err := t.src.DownloadChart(src.name, src.version, src.contentURL)
 	if err != nil {
 		t.logger.Errorf("failed to download the chart %s:%s: %v", src.name, src.version, err)
 		return err

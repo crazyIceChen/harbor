@@ -19,17 +19,17 @@ import (
 	"regexp"
 	"strings"
 
+	goldap "github.com/go-ldap/ldap/v3"
 	"github.com/goharbor/harbor/src/common"
 	"github.com/goharbor/harbor/src/common/dao"
 	"github.com/goharbor/harbor/src/common/dao/group"
 	"github.com/goharbor/harbor/src/common/utils"
-	goldap "gopkg.in/ldap.v2"
 
 	"github.com/goharbor/harbor/src/common/models"
 	ldapUtils "github.com/goharbor/harbor/src/common/utils/ldap"
-	"github.com/goharbor/harbor/src/common/utils/log"
 	"github.com/goharbor/harbor/src/core/auth"
 	"github.com/goharbor/harbor/src/core/config"
+	"github.com/goharbor/harbor/src/lib/log"
 )
 
 // Auth implements AuthenticateHelper interface to authenticate against LDAP
@@ -86,12 +86,12 @@ func (l *Auth) Authenticate(m models.AuthModel) (*models.User, error) {
 	u.Email = strings.TrimSpace(ldapUsers[0].Email)
 
 	l.syncUserInfoFromDB(&u)
-	l.attachLDAPGroup(ldapUsers, &u)
+	l.attachLDAPGroup(ldapUsers, &u, ldapSession)
 
 	return &u, nil
 }
 
-func (l *Auth) attachLDAPGroup(ldapUsers []models.LdapUser, u *models.User) {
+func (l *Auth) attachLDAPGroup(ldapUsers []models.LdapUser, u *models.User, sess *ldapUtils.Session) {
 	// Retrieve ldap related info in login to avoid too many traffic with LDAP server.
 	// Get group admin dn
 	groupCfg, err := config.LDAPGroupConf()
@@ -112,7 +112,16 @@ func (l *Auth) attachLDAPGroup(ldapUsers []models.LdapUser, u *models.User) {
 	}
 	userGroups := make([]models.UserGroup, 0)
 	for _, dn := range ldapUsers[0].GroupDNList {
-		userGroups = append(userGroups, models.UserGroup{GroupName: dn, LdapGroupDN: dn, GroupType: common.LDAPGroupType})
+		lGroups, err := sess.SearchGroupByDN(dn)
+		if err != nil {
+			log.Warningf("Can not get the ldap group name with DN %v, error %v", dn, err)
+			continue
+		}
+		if len(lGroups) == 0 {
+			log.Warningf("Can not get the ldap group name with DN %v", dn)
+			continue
+		}
+		userGroups = append(userGroups, models.UserGroup{GroupName: lGroups[0].GroupName, LdapGroupDN: dn, GroupType: common.LDAPGroupType})
 	}
 	u.GroupIDs, err = group.PopulateGroup(userGroups)
 	if err != nil {
@@ -154,7 +163,7 @@ func (l *Auth) SearchUser(username string) (*models.User, error) {
 	if err = ldapSession.Open(); err != nil {
 		return nil, fmt.Errorf("Failed to load system ldap config, %v", err)
 	}
-
+	defer ldapSession.Close()
 	ldapUsers, err := ldapSession.SearchUser(username)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to search user in ldap")

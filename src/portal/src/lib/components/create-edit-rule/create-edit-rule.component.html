@@ -1,7 +1,7 @@
 <clr-modal [(clrModalOpen)]="createEditRuleOpened" [clrModalStaticBackdrop]="true" [clrModalClosable]="false">
   <h3 class="modal-title">{{headerTitle | translate}}</h3>
-  <hbr-inline-alert class="modal-title" (confirmEvt)="confirmCancel($event)"></hbr-inline-alert>
   <div class="modal-body modal-body-height">
+    <hbr-inline-alert (confirmEvt)="confirmCancel($event)"></hbr-inline-alert>
     <form [formGroup]="ruleForm" novalidate class="clr-form clr-form-horizontal">
       <div class="clr-form-control" [class.clr-error]="(ruleForm.controls.name.touched && ruleForm.controls.name.invalid) || !isRuleNameValid">
         <label class="clr-control-label required">{{'REPLICATION.NAME' | translate}}</label>
@@ -82,8 +82,8 @@
               <div class="select resource-box clr-select-wrapper" *ngIf="supportedFilters[i]?.style==='radio' && supportedFilters[i]?.values.length > 1">
                 <select class="clr-select width-100" formControlName="value" #selectedValue id="{{'select_'+ supportedFilters[i]?.type}}"
                   name="{{supportedFilters[i]?.type}}">
-                  <option value="">{{'REPLICATION.BOTH' | translate}}</option>
-                  <option *ngFor="let value of supportedFilters[i]?.values;" value="{{value}}">{{value}}</option>
+                  <option value="">{{'REPLICATION.ALL' | translate}}</option>
+                  <option *ngFor="let value of supportedFilters[i]?.values;" value="{{value}}">{{value}}{{value==='chart'? ' (chartmuseum)': ''}}</option>
                 </select>
               </div>
               <div class="select resource-box" *ngIf="supportedFilters[i]?.type==='label'&& supportedFilters[i]?.style==='list'">
@@ -93,7 +93,7 @@
                       <ng-template ngFor let-label [ngForOf]="filter.value.value" let-m="index">
                         <span class="label" *ngIf="m<1"> {{label}} </span>
                       </ng-template>
-                      <span class="ellipsis" *ngIf="filter.value.value.length>1">···</span>
+                      <span class="ellipsis color-white-dark" *ngIf="filter.value.value.length>1">···</span>
                       <div *ngFor="let label1 of filter.value.value;let k = index" hidden="true">
                         <input type="text" [formControlName]="k" #labelValue id="{{'label_'+ supportedFilters[i]?.type + '_' + label1}}" name="{{'label_'+ supportedFilters[i]?.type + '_' + label1}}"
                           placeholder="select labels">
@@ -118,7 +118,7 @@
                 <clr-tooltip-content clrPosition="top-left" clrSize="md" *clrIfOpen>
                   <span class="tooltip-content" *ngIf="supportedFilters[i]?.type==='name'">{{'TOOLTIP.NAME_FILTER' | translate}}</span>
                   <span class="tooltip-content" *ngIf="supportedFilters[i]?.type==='tag'">{{'TOOLTIP.TAG_FILTER' | translate}}</span>
-                  <span class="tooltip-content" >{{'TOOLTIP.LABEL_FILTER' | translate}}</span>
+                  <span class="tooltip-content" *ngIf="supportedFilters[i]?.type==='label'">{{'TOOLTIP.LABEL_FILTER' | translate}}</span>
                   <span class="tooltip-content" *ngIf="supportedFilters[i]?.type==='resource'">{{'TOOLTIP.RESOURCE_FILTER' | translate}}</span>
                 </clr-tooltip-content>
               </clr-tooltip>
@@ -160,7 +160,7 @@
             </clr-tooltip-content>
           </clr-tooltip>
         </label>
-        <input clrInput formControlName="dest_namespace" type="text" id="dest_namespace" pattern="^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+        <input clrInput formControlName="dest_namespace" type="text" id="dest_namespace" pattern="^[a-z0-9]+(?:[/._-][a-z0-9]+)*$"
           class="inputWidth" maxlength="255">
         <clr-control-error *ngIf='ruleForm.controls.dest_namespace.touched && ruleForm.controls.dest_namespace.invalid'>{{'REPLICATION.DESTINATION_NAME_TOOLTIP' | translate}}</clr-control-error>
       </clr-input-container>
@@ -171,7 +171,7 @@
           <div formGroupName="trigger">
             <!--on trigger-->
             <div class="select width-115 clr-select-wrapper">
-              <select id="ruleTrigger" formControlName="type" class="clr-select">
+              <select (change)="changeTrigger($event)" id="ruleTrigger" formControlName="type" class="clr-select">
                 <option *ngFor="let trigger of supportedTriggers" [value]="trigger">{{'REPLICATION.' + trigger.toUpperCase() | translate }}</option>
               </select>
             </div>
@@ -180,7 +180,7 @@
                 <label class="required">Cron String</label>
                 <label for="targetCron" aria-haspopup="true" role="tooltip" class="tooltip tooltip-validation tooltip-sm tooltip-top-right"
                   [class.invalid]="!isNotSchedule() && cronTouched && !cronInputValid(ruleForm.value.trigger?.trigger_settings?.cron || '')">
-                  <input type="text" name=targetCron id="targetCron" required class="form-control cron-input clr-input" formControlName="cron">
+                  <input (input)="inputInvalid($event)" type="text" name=targetCron id="targetCron" required class="form-control cron-input clr-input" formControlName="cron">
                   <span class="tooltip-content">
                     {{'TOOLTIP.CRON_REQUIRED' | translate }}
                   </span>

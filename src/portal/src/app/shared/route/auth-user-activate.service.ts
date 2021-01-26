@@ -21,7 +21,7 @@ import {
 } from '@angular/router';
 import { SessionService } from '../../shared/session.service';
 import { AdmiralQueryParamKey } from '../../shared/shared.const';
-import { AppConfigService } from '../../app-config.service';
+import { AppConfigService } from '../../services/app-config.service';
 import { maintainUrlQueryParmas } from '../../shared/shared.utils';
 import { MessageHandlerService } from '../message-handler/message-handler.service';
 import { SearchTriggerService } from '../../base/global-search/search-trigger.service';
@@ -49,7 +49,7 @@ export class AuthCheckGuard implements CanActivate, CanActivateChild {
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean> | boolean {
     // When routing change, clear
     this.msgHandler.clear();
-    if (this.appConfigService.getConfig().read_only.toString() === 'true') {
+    if (this.appConfigService.getConfig().read_only && this.appConfigService.getConfig().read_only.toString() === 'true') {
       this.msgHandler.handleReadOnly();
     }
 

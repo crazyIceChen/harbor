@@ -11,9 +11,8 @@
     </div>
   </div>
   <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-    <hbr-list-replication-rule #listReplicationRule [projectId]="projectId" (replicateManual)=replicateManualRule($event)
-      (selectOne)="selectOneRule($event)" (hideJobs)="hideJobs()" (openNewRule)="openModal()" (editOne)="openEditRule($event)"
-      (reload)="reloadRules($event)" [loading]="loading" [withReplicationJob]="withReplicationJob" (redirect)="customRedirect($event)"
+    <hbr-list-replication-rule #listReplicationRule (replicateManual)=replicateManualRule($event)
+      (selectOne)="selectOneRule($event)" (hideJobs)="hideJobs()" (openNewRule)="openModal()" (editOne)="openEditRule($event)" [withReplicationJob]="withReplicationJob" (redirect)="customRedirect($event)"
       [hasCreateReplicationPermission]="hasCreateReplicationPermission"
       [hasUpdateReplicationPermission]="hasUpdateReplicationPermission"
       [hasDeleteReplicationPermission]="hasDeleteReplicationPermission"
@@ -53,26 +52,19 @@
           </div>
         </clr-dg-action-bar>
         <clr-dg-column [clrDgSortBy]="'id'">{{'REPLICATION.ID' | translate}}</clr-dg-column>
+        <clr-dg-column [clrDgField]="'status'">{{'REPLICATION.STATUS' | translate}}</clr-dg-column>
         <clr-dg-column [clrDgField]="'trigger'">{{'REPLICATION.REPLICATION_TRIGGER' | translate}}</clr-dg-column>
         <clr-dg-column [clrDgSortBy]="creationTimeComparator">{{'REPLICATION.CREATION_TIME' | translate}}</clr-dg-column>
         <clr-dg-column>{{'REPLICATION.DURATION' | translate}}</clr-dg-column>
         <clr-dg-column>{{'REPLICATION.SUCCESS_RATE' | translate}}</clr-dg-column>
         <clr-dg-column>{{'REPLICATION.TOTAL' | translate}}</clr-dg-column>
-        <clr-dg-column [clrDgField]="'status'">{{'REPLICATION.STATUS' | translate}}</clr-dg-column>
         <clr-dg-placeholder>{{'REPLICATION.JOB_PLACEHOLDER' | translate }}</clr-dg-placeholder>
         <clr-dg-row *ngFor="let j of jobs" [clrDgItem]="j">
           <clr-dg-cell>
               <a href="javascript:void(0)" (click)="goToLink(j.id)">{{j.id}}</a>
           </clr-dg-cell>
-          <clr-dg-cell>{{j.trigger}}</clr-dg-cell>
-          <clr-dg-cell>{{j.start_time | date: 'short'}}</clr-dg-cell>
-          <clr-dg-cell>{{getDuration(j)}}</clr-dg-cell>
           <clr-dg-cell>
-            {{(j.succeed > 0 ? j.succeed / j.total : 0) | percent }}
-          </clr-dg-cell>
-          <clr-dg-cell>{{j.total}}</clr-dg-cell>
-          <clr-dg-cell>
-            {{j.status}}
+            {{getStatusStr(j.status)}}
             <clr-tooltip>
                 <clr-icon *ngIf="j.status_text" clrTooltipTrigger shape="info-circle" size="20"></clr-icon>
                 <clr-tooltip-content [clrPosition]="'left'" clrSize="md" *clrIfOpen>
@@ -80,11 +72,20 @@
                 </clr-tooltip-content>
             </clr-tooltip>
           </clr-dg-cell>
+          <clr-dg-cell>{{j.trigger}}</clr-dg-cell>
+          <clr-dg-cell>{{j.start_time | date: 'short'}}</clr-dg-cell>
+          <clr-dg-cell>{{getDuration(j)}}</clr-dg-cell>
+          <clr-dg-cell>
+            {{((j.status === 'InProgress' || j.status === 'Failed')? (j.total > 0 ? j.succeed / j.total : 0): j.total > 0 ? j.succeed / j.total : 1)| percent }}
+          </clr-dg-cell>
+          <clr-dg-cell>{{j.total}}</clr-dg-cell>
         </clr-dg-row>
         <clr-dg-footer>
-          <span *ngIf="showPaginationIndex">{{pagination.firstItem + 1}} - {{pagination.lastItem + 1}} {{'REPLICATION.OF' | translate}}</span>
-          {{pagination.totalItems}} {{'REPLICATION.ITEMS' | translate}}
-          <clr-dg-pagination #pagination [(clrDgPage)]="currentPage" [clrDgPageSize]="pageSize" [clrDgTotalItems]="totalCount"></clr-dg-pagination>
+          <clr-dg-pagination #pagination [(clrDgPage)]="currentPage" [clrDgPageSize]="pageSize" [clrDgTotalItems]="totalCount">
+            <clr-dg-page-size [clrPageSizeOptions]="[15,25,50]">{{"PAGINATION.PAGE_SIZE" | translate}}</clr-dg-page-size>
+            <span *ngIf="showPaginationIndex">{{pagination.firstItem + 1}} - {{pagination.lastItem + 1}} {{'REPLICATION.OF' | translate}}</span>
+          {{totalCount}} {{'REPLICATION.ITEMS' | translate}}
+          </clr-dg-pagination>
         </clr-dg-footer>
       </clr-datagrid>
     </div>

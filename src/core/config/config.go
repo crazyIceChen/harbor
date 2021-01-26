@@ -20,15 +20,14 @@ package config
 import (
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/goharbor/harbor/src/common"
 	comcfg "github.com/goharbor/harbor/src/common/config"
 	"github.com/goharbor/harbor/src/common/models"
 	"github.com/goharbor/harbor/src/common/secret"
-	"github.com/goharbor/harbor/src/common/utils/log"
-	"github.com/goharbor/harbor/src/core/promgr"
-	"github.com/goharbor/harbor/src/core/promgr/pmsdriver/local"
+	"github.com/goharbor/harbor/src/lib/log"
 )
 
 const (
@@ -42,9 +41,7 @@ const (
 var (
 	// SecretStore manages secrets
 	SecretStore *secret.Store
-	// GlobalProjectMgr is initialized based on the deploy mode
-	GlobalProjectMgr promgr.ProjectManager
-	keyProvider      comcfg.KeyProvider
+	keyProvider comcfg.KeyProvider
 	// defined as a var for testing.
 	defaultCACertPath = "/etc/core/ca/ca.crt"
 	cfgMgr            *comcfg.CfgManager
@@ -60,9 +57,6 @@ func Init() {
 	log.Info("init secret store")
 	// init secret store
 	initSecretStore()
-	log.Info("init project manager")
-	// init project manager
-	initProjectManager()
 }
 
 // InitWithSettings init config with predefined configs, and optionally overwrite the keyprovider
@@ -89,11 +83,6 @@ func initSecretStore() {
 	m := map[string]string{}
 	m[JobserviceSecret()] = secret.JobserviceUser
 	SecretStore = secret.NewStore(m)
-}
-
-func initProjectManager() {
-	log.Info("initializing the project manager based on local database...")
-	GlobalProjectMgr = promgr.NewDefaultProjectManager(local.NewDriver(), true)
 }
 
 // GetCfgManager return the current config manager
@@ -217,12 +206,21 @@ func SelfRegistration() (bool, error) {
 
 // RegistryURL ...
 func RegistryURL() (string, error) {
-	return cfgMgr.Get(common.RegistryURL).GetString(), nil
+	url := os.Getenv("REGISTRY_URL")
+	if len(url) == 0 {
+		url = "http://registry:5000"
+	}
+	return url, nil
 }
 
 // InternalJobServiceURL returns jobservice URL for internal communication between Harbor containers
 func InternalJobServiceURL() string {
-	return strings.TrimSuffix(cfgMgr.Get(common.JobServiceURL).GetString(), "/")
+	return os.Getenv("JOBSERVICE_URL")
+}
+
+// GetCoreURL returns the url of core from env
+func GetCoreURL() string {
+	return os.Getenv("CORE_URL")
 }
 
 // InternalCoreURL returns the local harbor core url
@@ -316,32 +314,14 @@ func WithNotary() bool {
 	return cfgMgr.Get(common.WithNotary).GetBool()
 }
 
-// WithClair returns a bool value to indicate if Harbor's deployed with Clair
-func WithClair() bool {
-	return cfgMgr.Get(common.WithClair).GetBool()
+// WithTrivy returns a bool value to indicate if Harbor's deployed with Trivy.
+func WithTrivy() bool {
+	return cfgMgr.Get(common.WithTrivy).GetBool()
 }
 
-// ClairEndpoint returns the end point of clair instance, by default it's the one deployed within Harbor.
-func ClairEndpoint() string {
-	return cfgMgr.Get(common.ClairURL).GetString()
-}
-
-// ClairDB return Clair db info
-func ClairDB() (*models.PostGreSQL, error) {
-	clairDB := &models.PostGreSQL{
-		Host:     cfgMgr.Get(common.ClairDBHost).GetString(),
-		Port:     cfgMgr.Get(common.ClairDBPort).GetInt(),
-		Username: cfgMgr.Get(common.ClairDBUsername).GetString(),
-		Password: cfgMgr.Get(common.ClairDBPassword).GetString(),
-		Database: cfgMgr.Get(common.ClairDB).GetString(),
-		SSLMode:  cfgMgr.Get(common.ClairDBSSLMode).GetString(),
-	}
-	return clairDB, nil
-}
-
-// ClairAdapterEndpoint returns the endpoint of clair adapter instance, by default it's the one deployed within Harbor.
-func ClairAdapterEndpoint() string {
-	return cfgMgr.Get(common.ClairAdapterURL).GetString()
+// TrivyAdapterURL returns the endpoint URL of a Trivy adapter instance, by default it's the one deployed within Harbor.
+func TrivyAdapterURL() string {
+	return cfgMgr.Get(common.TrivyAdapterURL).GetString()
 }
 
 // UAASettings returns the UAASettings to access UAA service.
@@ -395,7 +375,7 @@ func GetPortalURL() string {
 
 // GetRegistryCtlURL returns the URL of registryctl
 func GetRegistryCtlURL() string {
-	url := os.Getenv("REGISTRYCTL_URL")
+	url := os.Getenv("REGISTRY_CONTROLLER_URL")
 	if len(url) == 0 {
 		return common.DefaultRegistryCtlURL
 	}
@@ -411,6 +391,7 @@ func HTTPAuthProxySetting() (*models.HTTPAuthProxy, error) {
 	return &models.HTTPAuthProxy{
 		Endpoint:            cfgMgr.Get(common.HTTPAuthProxyEndpoint).GetString(),
 		TokenReviewEndpoint: cfgMgr.Get(common.HTTPAuthProxyTokenReviewEndpoint).GetString(),
+		AdminGroups:         splitAndTrim(cfgMgr.Get(common.HTTPAuthProxyAdminGroups).GetString(), ","),
 		VerifyCert:          cfgMgr.Get(common.HTTPAuthProxyVerifyCert).GetBool(),
 		SkipSearch:          cfgMgr.Get(common.HTTPAuthProxySkipSearch).GetBool(),
 		ServerCertificate:   cfgMgr.Get(common.HTTPAuthProxyServerCertificate).GetString(),
@@ -425,20 +406,20 @@ func OIDCSetting() (*models.OIDCSetting, error) {
 	}
 	scopeStr := cfgMgr.Get(common.OIDCScope).GetString()
 	extEndpoint := strings.TrimSuffix(cfgMgr.Get(common.ExtEndpoint).GetString(), "/")
-	scope := []string{}
-	for _, s := range strings.Split(scopeStr, ",") {
-		scope = append(scope, strings.TrimSpace(s))
-	}
-
+	scope := splitAndTrim(scopeStr, ",")
 	return &models.OIDCSetting{
-		Name:         cfgMgr.Get(common.OIDCName).GetString(),
-		Endpoint:     cfgMgr.Get(common.OIDCEndpoint).GetString(),
-		VerifyCert:   cfgMgr.Get(common.OIDCVerifyCert).GetBool(),
-		ClientID:     cfgMgr.Get(common.OIDCCLientID).GetString(),
-		ClientSecret: cfgMgr.Get(common.OIDCClientSecret).GetString(),
-		GroupsClaim:  cfgMgr.Get(common.OIDCGroupsClaim).GetString(),
-		RedirectURL:  extEndpoint + common.OIDCCallbackPath,
-		Scope:        scope,
+		Name:               cfgMgr.Get(common.OIDCName).GetString(),
+		Endpoint:           cfgMgr.Get(common.OIDCEndpoint).GetString(),
+		VerifyCert:         cfgMgr.Get(common.OIDCVerifyCert).GetBool(),
+		AutoOnboard:        cfgMgr.Get(common.OIDCAutoOnboard).GetBool(),
+		ClientID:           cfgMgr.Get(common.OIDCCLientID).GetString(),
+		ClientSecret:       cfgMgr.Get(common.OIDCClientSecret).GetString(),
+		GroupsClaim:        cfgMgr.Get(common.OIDCGroupsClaim).GetString(),
+		AdminGroup:         cfgMgr.Get(common.OIDCAdminGroup).GetString(),
+		RedirectURL:        extEndpoint + common.OIDCCallbackPath,
+		Scope:              scope,
+		UserClaim:          cfgMgr.Get(common.OIDCUserClaim).GetString(),
+		ExtraRedirectParms: cfgMgr.Get(common.OIDCExtraRedirectParms).GetStringToStringMap(),
 	}, nil
 }
 
@@ -458,7 +439,51 @@ func QuotaSetting() (*models.QuotaSetting, error) {
 		return nil, err
 	}
 	return &models.QuotaSetting{
-		CountPerProject:   cfgMgr.Get(common.CountPerProject).GetInt64(),
 		StoragePerProject: cfgMgr.Get(common.StoragePerProject).GetInt64(),
 	}, nil
+}
+
+// GetPermittedRegistryTypesForProxyCache returns the permitted registry types for proxy cache
+func GetPermittedRegistryTypesForProxyCache() []string {
+	types := os.Getenv("PERMITTED_REGISTRY_TYPES_FOR_PROXY_CACHE")
+	if len(types) == 0 {
+		return []string{}
+	}
+	return strings.Split(types, ",")
+}
+
+// GetGCTimeWindow returns the reserve time window of blob.
+func GetGCTimeWindow() int64 {
+	// the env is for testing/debugging. For production, Do NOT set it.
+	if env, exist := os.LookupEnv("GC_TIME_WINDOW_HOURS"); exist {
+		timeWindow, err := strconv.ParseInt(env, 10, 64)
+		if err == nil {
+			return timeWindow
+		}
+	}
+	return common.DefaultGCTimeWindowHours
+}
+
+// RobotPrefix user defined robot name prefix.
+func RobotPrefix() string {
+	return cfgMgr.Get(common.RobotNamePrefix).GetString()
+}
+
+// Metric returns the overall metric settings
+func Metric() *models.Metric {
+	return &models.Metric{
+		Enabled: cfgMgr.Get(common.MetricEnable).GetBool(),
+		Port:    cfgMgr.Get(common.MetricPort).GetInt(),
+		Path:    cfgMgr.Get(common.MetricPath).GetString(),
+	}
+}
+
+func splitAndTrim(s, sep string) []string {
+	res := make([]string, 0)
+	for _, s := range strings.Split(s, sep) {
+		if e := strings.TrimSpace(s); len(e) > 0 {
+			res = append(res, e)
+		}
+	}
+	return res
 }

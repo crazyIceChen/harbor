@@ -20,9 +20,9 @@ import (
 
 	"github.com/astaxie/beego/orm"
 	"github.com/goharbor/harbor/src/common/dao"
-	"github.com/goharbor/harbor/src/pkg/q"
-	"github.com/goharbor/harbor/src/pkg/types"
-	"github.com/pkg/errors"
+	"github.com/goharbor/harbor/src/lib/errors"
+	liborm "github.com/goharbor/harbor/src/lib/orm"
+	"github.com/goharbor/harbor/src/lib/q"
 )
 
 func init() {
@@ -35,10 +35,7 @@ func AddRegistration(r *Registration) (int64, error) {
 
 	id, err := o.Insert(r)
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-			return 0, types.ErrDupRows
-		}
-		return 0, err
+		return 0, liborm.WrapConflictError(err, "registration name or url already exists")
 	}
 
 	return id, nil
@@ -108,6 +105,9 @@ func ListRegistrations(query *q.Query) ([]*Registration, error) {
 					kk := strings.TrimPrefix(k, "ex_")
 					qt = qt.Filter(kk, v)
 					continue
+				}
+				if s, ok := v.(string); ok {
+					v = liborm.Escape(s)
 				}
 
 				qt = qt.Filter(fmt.Sprintf("%s__icontains", k), v)

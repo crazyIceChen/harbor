@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { Subscription, forkJoin } from "rxjs";
+import {Subscription, forkJoin, of} from "rxjs";
 import {
     Component,
     Output,
@@ -27,7 +27,7 @@ import { ConfirmationDialogService } from "../../shared/confirmation-dialog/conf
 import { MessageHandlerService } from "../../shared/message-handler/message-handler.service";
 import { ConfirmationMessage } from "../../shared/confirmation-dialog/confirmation-message";
 import { SearchTriggerService } from "../../base/global-search/search-trigger.service";
-import { AppConfigService } from "../../app-config.service";
+import { AppConfigService } from "../../services/app-config.service";
 import { Project } from "../project";
 import { map, catchError, finalize } from "rxjs/operators";
 import { throwError as observableThrowError } from "rxjs";
@@ -35,6 +35,8 @@ import { calculatePage, CustomComparator, doFiltering, doSorting } from "../../.
 import { OperationService } from "../../../lib/components/operation/operation.service";
 import { operateChanges, OperateInfo, OperationState } from "../../../lib/components/operation/operate";
 import { errorHandler } from "../../../lib/utils/shared/shared.utils";
+import {HttpErrorResponse} from "@angular/common/http";
+import { ClrDatagridStateInterface } from '@clr/angular';
 
 @Component({
     selector: "list-project",
@@ -55,11 +57,16 @@ export class ListProjectComponent implements OnDestroy {
     timeComparator: Comparator<Project> = new CustomComparator<Project>("creation_time", "date");
     accessLevelComparator: Comparator<Project> = new CustomComparator<Project>("public", "string");
     roleComparator: Comparator<Project> = new CustomComparator<Project>("current_user_role_id", "number");
+    typeComparator: Comparator<Project> = new CustomComparator<Project>("registry_id", "number");
     currentPage = 1;
     totalCount = 0;
     pageSize = 15;
     currentState: State;
     subscription: Subscription;
+    projectTypeMap: any = {
+        0: "PROJECT.PROJECT",
+        1: "PROJECT.PROXY_CACHE"
+    };
 
     constructor(
         private session: SessionService,
@@ -96,11 +103,7 @@ export class ListProjectComponent implements OnDestroy {
     }
 
     get withChartMuseum(): boolean {
-        if (this.appConfigService.getConfig().with_chartmuseum) {
-            return true;
-        } else {
-            return false;
-        }
+        return this.appConfigService.getConfig().with_chartmuseum;
     }
 
     public get isSystemAdmin(): boolean {
@@ -129,14 +132,15 @@ export class ListProjectComponent implements OnDestroy {
     goToLink(proId: number): void {
         this.searchTrigger.closeSearch(true);
 
-        let linkUrl = ["harbor", "projects", proId, "summary"];
+        let linkUrl = ["harbor", "projects", proId];
         this.router.navigate(linkUrl);
     }
 
-    clrLoad(state: State) {
+    clrLoad(state: ClrDatagridStateInterface) {
         if (!state || !state.page) {
             return;
         }
+        this.pageSize = state.page.size;
         this.selectedRow = [];
 
         // Keep state for future filtering and sorting
@@ -203,7 +207,22 @@ export class ListProjectComponent implements OnDestroy {
             projects.forEach(data => {
                 observableLists.push(this.delOperate(data));
             });
-            forkJoin(...observableLists).subscribe(item => {
+            forkJoin(...observableLists).subscribe(resArr => {
+                let error;
+                if (resArr && resArr.length) {
+                    resArr.forEach(item => {
+                        if (item instanceof HttpErrorResponse) {
+                            error = errorHandler(item);
+                        }
+                    });
+                }
+                if (error) {
+                    this.msgHandler.handleError(error);
+                } else {
+                    this.translate.get("BATCH.DELETED_SUCCESS").subscribe(res => {
+                        this.msgHandler.showSuccess(res);
+                    });
+                }
                 let st: State = this.getStateAfterDeletion();
                 this.selectedRow = [];
                 if (!st) {
@@ -224,20 +243,17 @@ export class ListProjectComponent implements OnDestroy {
         operMessage.state = OperationState.progressing;
         operMessage.data.name = project.name;
         this.operationService.publishInfo(operMessage);
-
         return this.proService.deleteProject(project.project_id)
             .pipe(map(
                 () => {
-                    this.translate.get("BATCH.DELETED_SUCCESS").subscribe(res => {
-                        operateChanges(operMessage, OperationState.success);
-                    });
+                    operateChanges(operMessage, OperationState.success);
                 }), catchError(
                 error => {
                     const message = errorHandler(error);
-                    this.translateService.get(message).subscribe(res =>
-                        operateChanges(operMessage, OperationState.failure, res)
-                    );
-                    return observableThrowError(message);
+                    this.translateService.get(message).subscribe(res => {
+                        operateChanges(operMessage, OperationState.failure, res);
+                    });
+                    return of(error);
                 }));
     }
 

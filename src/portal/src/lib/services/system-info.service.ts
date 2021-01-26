@@ -2,9 +2,9 @@ import {ElementRef, Inject, Injectable} from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map, catchError } from "rxjs/operators";
 import { Observable, throwError as observableThrowError } from "rxjs";
-import {SystemCVEWhitelist, SystemInfo} from './interface';
+import {SystemCVEAllowlist, SystemInfo} from './interface';
 import { SERVICE_CONFIG, IServiceConfig } from '../entities/service.config';
-import {HTTP_GET_OPTIONS, HTTP_JSON_OPTIONS} from "../utils/utils";
+import { CURRENT_BASE_HREF, HTTP_GET_OPTIONS, HTTP_JSON_OPTIONS } from "../utils/utils";
 
 /**
  * Get System information about current backend server.
@@ -19,14 +19,14 @@ export abstract class SystemInfoService {
    */
   abstract getSystemInfo(): Observable<SystemInfo>;
   /**
-   *  get system CEVWhitelist
+   *  get system CEVAllowlist
    */
-  abstract getSystemWhitelist(): Observable<SystemCVEWhitelist>;
+  abstract getSystemAllowlist(): Observable<SystemCVEAllowlist>;
   /**
-   *  update systemCVEWhitelist
-   * @param systemCVEWhitelist
+   *  update systemCVEAllowlist
+   * @param systemCVEAllowlist
    */
-  abstract updateSystemWhitelist(systemCVEWhitelist: SystemCVEWhitelist): Observable<any>;
+  abstract updateSystemAllowlist(systemCVEAllowlist: SystemCVEAllowlist): Observable<any>;
   /**
    *  set null to the date type input
    * @param ref
@@ -42,18 +42,18 @@ export class SystemInfoDefaultService extends SystemInfoService {
     super();
   }
   getSystemInfo(): Observable<SystemInfo> {
-    let url = this.config.systemInfoEndpoint ? this.config.systemInfoEndpoint : '/api/systeminfo';
+    let url = this.config.systemInfoEndpoint ? this.config.systemInfoEndpoint : CURRENT_BASE_HREF + '/systeminfo';
     return this.http.get(url, HTTP_GET_OPTIONS)
       .pipe(map(systemInfo => systemInfo as SystemInfo)
       , catchError(error => observableThrowError(error)));
   }
-  public getSystemWhitelist(): Observable<SystemCVEWhitelist> {
-    return this.http.get("/api/system/CVEWhitelist", HTTP_GET_OPTIONS)
-        .pipe(map(systemCVEWhitelist => systemCVEWhitelist as SystemCVEWhitelist)
+  public getSystemAllowlist(): Observable<SystemCVEAllowlist> {
+    return this.http.get(CURRENT_BASE_HREF + "/system/CVEAllowlist", HTTP_GET_OPTIONS)
+        .pipe(map(systemCVEAllowlist => systemCVEAllowlist as SystemCVEAllowlist)
             , catchError(error => observableThrowError(error)));
   }
-  public updateSystemWhitelist(systemCVEWhitelist: SystemCVEWhitelist): Observable<any> {
-    return this.http.put("/api/system/CVEWhitelist", JSON.stringify(systemCVEWhitelist), HTTP_JSON_OPTIONS)
+  public updateSystemAllowlist(systemCVEAllowlist: SystemCVEAllowlist): Observable<any> {
+    return this.http.put(CURRENT_BASE_HREF + "/system/CVEAllowlist", JSON.stringify(systemCVEAllowlist), HTTP_JSON_OPTIONS)
         .pipe(map(response => response)
             , catchError(error => observableThrowError(error)));
   }

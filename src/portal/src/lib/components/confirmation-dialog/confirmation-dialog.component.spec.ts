@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { HarborLibraryModule } from '../../harbor-library.module';
 import { ConfirmationDialogComponent } from './confirmation-dialog.component';
 import { IServiceConfig, SERVICE_CONFIG } from '../../entities/service.config';
@@ -6,6 +6,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ConfirmationTargets } from '../../entities/shared.const';
 import { ConfirmationMessage } from './confirmation-message';
 import { BatchInfo } from './confirmation-batch-message';
+import { CURRENT_BASE_HREF } from "../../utils/utils";
 
 
 describe('ConfirmationDialogComponent', () => {
@@ -13,7 +14,7 @@ describe('ConfirmationDialogComponent', () => {
     let comp: ConfirmationDialogComponent;
     let fixture: ComponentFixture<ConfirmationDialogComponent>;
     let config: IServiceConfig = {
-        configurationEndpoint: '/api/configurations/testing'
+        configurationEndpoint: CURRENT_BASE_HREF + '/configurations/testing'
     };
     const deletionMessage: ConfirmationMessage = new ConfirmationMessage(
         "MEMBER.DELETION_TITLE",
@@ -23,7 +24,7 @@ describe('ConfirmationDialogComponent', () => {
         ConfirmationTargets.CONFIG
     );
 
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             imports: [
                 HarborLibraryModule,

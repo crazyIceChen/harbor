@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { ClarityModule } from "@clr/angular";
 import { SignUpComponent } from './sign-up.component';
 import { SessionService } from '../../shared/session.service';
@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { InlineAlertComponent } from '../../shared/inline-alert/inline-alert.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
+import { ErrorHandler } from '../../../lib/utils/error-handler';
 
 describe('SignUpComponent', () => {
     let component: SignUpComponent;
@@ -35,7 +36,7 @@ describe('SignUpComponent', () => {
         creation_time: 'string',
         update_time: 'string',
     };
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             declarations: [SignUpComponent, NewUserFormComponent, InlineAlertComponent],
             imports: [
@@ -47,7 +48,8 @@ describe('SignUpComponent', () => {
             providers: [
                 TranslateService,
                 { provide: SessionService, useValue: fakeSessionService },
-                { provide: UserService, useValue: fakeUserService }
+                { provide: UserService, useValue: fakeUserService },
+                ErrorHandler
             ],
             schemas: [CUSTOM_ELEMENTS_SCHEMA]
         }).compileComponents();

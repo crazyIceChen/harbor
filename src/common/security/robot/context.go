@@ -15,26 +15,44 @@
 package robot
 
 import (
+	"context"
+	rbac_project "github.com/goharbor/harbor/src/common/rbac/project"
+	"github.com/goharbor/harbor/src/common/rbac/system"
+	"github.com/goharbor/harbor/src/controller/robot"
+	"strings"
+	"sync"
+
 	"github.com/goharbor/harbor/src/common/models"
 	"github.com/goharbor/harbor/src/common/rbac"
-	"github.com/goharbor/harbor/src/core/promgr"
+	"github.com/goharbor/harbor/src/controller/project"
+	"github.com/goharbor/harbor/src/pkg/permission/evaluator"
+	"github.com/goharbor/harbor/src/pkg/permission/types"
 	"github.com/goharbor/harbor/src/pkg/robot/model"
 )
 
 // SecurityContext implements security.Context interface based on database
 type SecurityContext struct {
-	robot  *model.Robot
-	pm     promgr.ProjectManager
-	policy []*rbac.Policy
+	robot         *model.Robot
+	isSystemLevel bool
+	ctl           project.Controller
+	policies      []*types.Policy
+	evaluator     evaluator.Evaluator
+	once          sync.Once
 }
 
 // NewSecurityContext ...
-func NewSecurityContext(robot *model.Robot, pm promgr.ProjectManager, policy []*rbac.Policy) *SecurityContext {
+func NewSecurityContext(robot *model.Robot, isSystemLevel bool, policy []*types.Policy) *SecurityContext {
 	return &SecurityContext{
-		robot:  robot,
-		pm:     pm,
-		policy: policy,
+		ctl:           project.Ctl,
+		robot:         robot,
+		policies:      policy,
+		isSystemLevel: isSystemLevel,
 	}
+}
+
+// Name returns the name of the security context
+func (s *SecurityContext) Name() string {
+	return "robot"
 }
 
 // IsAuthenticated returns true if the user has been authenticated
@@ -61,29 +79,47 @@ func (s *SecurityContext) IsSolutionUser() bool {
 	return false
 }
 
-// GetMyProjects no implementation
-func (s *SecurityContext) GetMyProjects() ([]*models.Project, error) {
-	return nil, nil
-}
-
-// GetProjectRoles no implementation
-func (s *SecurityContext) GetProjectRoles(projectIDOrName interface{}) []int {
-	return nil
-}
-
 // Can returns whether the robot can do action on resource
-func (s *SecurityContext) Can(action rbac.Action, resource rbac.Resource) bool {
-	ns, err := resource.GetNamespace()
-	if err == nil {
-		switch ns.Kind() {
-		case "project":
-			projectID := ns.Identity().(int64)
-			isPublicProject, _ := s.pm.IsPublic(projectID)
-			projectNamespace := rbac.NewProjectNamespace(projectID, isPublicProject)
-			robot := NewRobot(s.GetUsername(), projectNamespace, s.policy)
-			return rbac.HasPermission(robot, resource, action)
+func (s *SecurityContext) Can(ctx context.Context, action types.Action, resource types.Resource) bool {
+	s.once.Do(func() {
+		if s.isSystemLevel {
+			var proPolicies []*types.Policy
+			var sysPolicies []*types.Policy
+			var evaluators evaluator.Evaluators
+			for _, p := range s.policies {
+				if strings.HasPrefix(p.Resource.String(), robot.SCOPESYSTEM) {
+					sysPolicies = append(sysPolicies, p)
+				} else if strings.HasPrefix(p.Resource.String(), robot.SCOPEPROJECT) {
+					proPolicies = append(proPolicies, p)
+				}
+			}
+			if len(sysPolicies) != 0 {
+				evaluators = evaluators.Add(system.NewEvaluator(s.GetUsername(), sysPolicies))
+			} else if len(proPolicies) != 0 {
+				evaluators = evaluators.Add(rbac_project.NewEvaluator(s.ctl, rbac_project.NewBuilderForPolicies(s.GetUsername(), proPolicies)))
+			}
+			s.evaluator = evaluators
+
+		} else {
+			s.evaluator = rbac_project.NewEvaluator(s.ctl, rbac_project.NewBuilderForPolicies(s.GetUsername(), s.policies, filterRobotPolicies))
+		}
+	})
+
+	return s.evaluator != nil && s.evaluator.HasPermission(ctx, resource, action)
+}
+
+func filterRobotPolicies(p *models.Project, policies []*types.Policy) []*types.Policy {
+	namespace := rbac_project.NewNamespace(p.ProjectID)
+
+	var results []*types.Policy
+	for _, policy := range policies {
+		if types.ResourceAllowedInNamespace(policy.Resource, namespace) {
+			results = append(results, policy)
+			// give the PUSH action a pull access
+			if policy.Action == rbac.ActionPush {
+				results = append(results, &types.Policy{Resource: policy.Resource, Action: rbac.ActionPull})
+			}
 		}
 	}
-
-	return false
+	return results
 }

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,9 +28,9 @@ import (
 	"github.com/goharbor/harbor/src/common/dao"
 	httputil "github.com/goharbor/harbor/src/common/http"
 	"github.com/goharbor/harbor/src/common/utils"
-	"github.com/goharbor/harbor/src/common/utils/log"
 	"github.com/goharbor/harbor/src/core/config"
-	"github.com/gomodule/redigo/redis"
+	"github.com/goharbor/harbor/src/lib/log"
+	"github.com/goharbor/harbor/src/lib/redis"
 )
 
 var (
@@ -77,6 +79,9 @@ func (h *HealthAPI) CheckHealth() {
 		}
 		components = append(components, componentStatus)
 	}
+
+	sort.Slice(components, func(i, j int) bool { return components[i].Name < components[j].Name })
+
 	status := &overallHealthStatus{}
 	status.Status = isHealthy.String()
 	status.Components = components
@@ -131,7 +136,8 @@ func HTTPStatusCodeHealthChecker(method string, url string, header http.Header,
 		}
 
 		client := httputil.NewClient(&http.Client{
-			Timeout: timeout,
+			Transport: httputil.GetHTTPTransport(httputil.SecureTransport),
+			Timeout:   timeout,
 		})
 		resp, err := client.Do(req)
 		if err != nil {
@@ -259,24 +265,20 @@ func databaseHealthChecker() health.Checker {
 }
 
 func redisHealthChecker() health.Checker {
-	url := config.GetRedisOfRegURL()
-	timeout := 60 * time.Second
 	period := 10 * time.Second
 	checker := health.CheckFunc(func() error {
-		conn, err := redis.DialURL(url,
-			redis.DialConnectTimeout(timeout*time.Second),
-			redis.DialReadTimeout(timeout*time.Second),
-			redis.DialWriteTimeout(timeout*time.Second))
-		if err != nil {
-			return fmt.Errorf("failed to establish connection with Redis: %v", err)
-		}
+		conn := redis.DefaultPool().Get()
 		defer conn.Close()
-		_, err = conn.Do("PING")
-		if err != nil {
-			return fmt.Errorf("failed to run \"PING\": %v", err)
-		}
 		return nil
 	})
+	return PeriodicHealthChecker(checker, period)
+}
+
+func trivyHealthChecker() health.Checker {
+	url := strings.TrimSuffix(config.TrivyAdapterURL(), "/") + "/probe/healthy"
+	timeout := 60 * time.Second
+	period := 10 * time.Second
+	checker := HTTPStatusCodeHealthChecker(http.MethodGet, url, nil, timeout, http.StatusOK)
 	return PeriodicHealthChecker(checker, period)
 }
 
@@ -293,6 +295,9 @@ func registerHealthCheckers() {
 	}
 	if config.WithNotary() {
 		HealthCheckerRegistry["notary"] = notaryHealthChecker()
+	}
+	if config.WithTrivy() {
+		HealthCheckerRegistry["trivy"] = trivyHealthChecker()
 	}
 }
 

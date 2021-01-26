@@ -7,13 +7,14 @@ import { ErrorHandler } from "../../../utils/error-handler";
 import { of } from "rxjs";
 import { StringValueItem } from "../config";
 import { BrowserAnimationsModule } from "@angular/platform-browser/animations";
+import { CURRENT_BASE_HREF } from "../../../utils/utils";
 describe('SystemSettingsComponent', () => {
   let component: SystemSettingsComponent;
   let fixture: ComponentFixture<SystemSettingsComponent>;
   const config: IServiceConfig = {
-    baseEndpoint: "/api/testing"
+    baseEndpoint: CURRENT_BASE_HREF + "/testing"
   };
-  const mockedWhitelist = {
+  const mockedAllowlist = {
     id: 1,
     project_id: 1,
     expires_at: null,
@@ -22,13 +23,13 @@ describe('SystemSettingsComponent', () => {
     ]
   };
   const fakedSystemInfoService = {
-    getSystemWhitelist() {
-       return of(mockedWhitelist);
+    getSystemAllowlist() {
+       return of(mockedAllowlist);
     },
     getSystemInfo() {
        return of({});
     },
-    updateSystemWhitelist() {
+    updateSystemAllowlist() {
       return of(true);
     }
   };
@@ -64,7 +65,7 @@ describe('SystemSettingsComponent', () => {
     expect(component).toBeTruthy();
   });
   it('cancel button should works', () => {
-    component.systemWhitelist.items.push({cve_id: 'CVE-2019-456'});
+    component.systemAllowlist.items.push({cve_id: 'CVE-2019-456'});
     const readOnly: HTMLElement = fixture.nativeElement.querySelector('#repoReadOnly');
     readOnly.click();
     fixture.detectChanges();
@@ -74,13 +75,13 @@ describe('SystemSettingsComponent', () => {
     expect(component.confirmationDlg.opened).toBeTruthy();
   });
   it('save button should works', () => {
-    component.systemWhitelist.items[0].cve_id = 'CVE-2019-789';
+    component.systemAllowlist.items[0].cve_id = 'CVE-2019-789';
     const readOnly: HTMLElement = fixture.nativeElement.querySelector('#repoReadOnly');
     readOnly.click();
     fixture.detectChanges();
     const save: HTMLButtonElement = fixture.nativeElement.querySelector('#config_system_save');
     save.click();
     fixture.detectChanges();
-    expect(component.systemWhitelistOrigin.items[0].cve_id).toEqual('CVE-2019-789');
+    expect(component.systemAllowlistOrigin.items[0].cve_id).toEqual('CVE-2019-789');
   });
 });

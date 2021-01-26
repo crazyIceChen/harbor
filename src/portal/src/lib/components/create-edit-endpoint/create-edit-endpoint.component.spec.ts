@@ -1,14 +1,10 @@
 import {
   ComponentFixture,
-  TestBed,
-  async
+  TestBed, waitForAsync,
 } from "@angular/core/testing";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
-
 import { SharedModule } from "../../utils/shared/shared.module";
-
 import { FilterComponent } from "../filter/filter.component";
-
 import { CreateEditEndpointComponent } from "./create-edit-endpoint.component";
 import { InlineAlertComponent } from "../inline-alert/inline-alert.component";
 import { ErrorHandler } from "../../utils/error-handler/error-handler";
@@ -20,7 +16,8 @@ import {
 import { IServiceConfig, SERVICE_CONFIG } from "../../entities/service.config";
 import { of } from "rxjs";
 import { HttpClient } from "@angular/common/http";
-import { HttpClientTestingModule } from "@angular/common/http/testing";
+import { CURRENT_BASE_HREF } from "../../utils/utils";
+import { AppConfigService } from '../../../app/services/app-config.service';
 
 describe("CreateEditEndpointComponent (inline template)", () => {
   let mockData: Endpoint = {
@@ -196,6 +193,14 @@ describe("CreateEditEndpointComponent (inline template)", () => {
           {
             "key": "sa-east-1",
             "value": "https://api.ecr.sa-east-1.amazonaws.com"
+          },
+          {
+            "key": "cn-north-1",
+            "value": "https://api.ecr.cn-north-1.amazonaws.com.cn"
+          },
+          {
+            "key": "cn-northwest-1",
+            "value": "https://api.ecr.cn-northwest-1.amazonaws.com.cn"
           }
         ]
       },
@@ -254,7 +259,7 @@ describe("CreateEditEndpointComponent (inline template)", () => {
   let fixture: ComponentFixture<CreateEditEndpointComponent>;
 
   let config: IServiceConfig = {
-    systemInfoEndpoint: "/api/endpoints/testing"
+    systemInfoEndpoint: CURRENT_BASE_HREF + "/endpoints/testing"
   };
 
   let endpointService: EndpointService;
@@ -262,7 +267,15 @@ describe("CreateEditEndpointComponent (inline template)", () => {
 
   let spy: jasmine.Spy;
   let spyAdapter: jasmine.Spy;
-  beforeEach(async(() => {
+  const mockAppConfigService = {
+    getConfig: () => {
+      return {
+        project_creation_restriction: "",
+        with_chartmuseum: ""
+      };
+    }
+  };
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
       imports: [SharedModule, NoopAnimationsModule],
       declarations: [
@@ -275,6 +288,7 @@ describe("CreateEditEndpointComponent (inline template)", () => {
         { provide: SERVICE_CONFIG, useValue: config },
         { provide: EndpointService, useClass: EndpointDefaultService },
         { provide: HttpClient, useValue: fakedHttp },
+        { provide: AppConfigService, useValue: mockAppConfigService }
       ]
     });
   }));
@@ -301,14 +315,14 @@ describe("CreateEditEndpointComponent (inline template)", () => {
     expect(comp).toBeTruthy();
   });
 
-  it("should get endpoint be called", async(() => {
+  it("should get endpoint be called", waitForAsync(() => {
     fixture.detectChanges();
     fixture.whenStable().then(() => {
       fixture.detectChanges();
       expect(spy.calls.any()).toBeTruthy();
     });
   }));
-  it("should get adapterInfo", async(() => {
+  it("should get adapterInfo", waitForAsync(() => {
     fixture.detectChanges();
     fixture.whenStable().then(() => {
       fixture.detectChanges();
@@ -316,7 +330,7 @@ describe("CreateEditEndpointComponent (inline template)", () => {
     });
   }));
 
-  it("should get endpoint and open modal", async(() => {
+  it("should get endpoint and open modal", waitForAsync(() => {
     fixture.detectChanges();
     fixture.whenStable().then(() => {
       fixture.detectChanges();
@@ -326,6 +340,6 @@ describe("CreateEditEndpointComponent (inline template)", () => {
 
   it("should endpoint be initialized", () => {
     fixture.detectChanges();
-    expect(config.systemInfoEndpoint).toEqual("/api/endpoints/testing");
+    expect(config.systemInfoEndpoint).toEqual(CURRENT_BASE_HREF + "/endpoints/testing");
   });
 });

@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { ForgotPasswordComponent } from './forgot-password.component';
 import { ClarityModule } from "@clr/angular";
@@ -8,6 +8,7 @@ import { PasswordSettingService } from '../password-setting.service';
 import { InlineAlertComponent } from '../../../shared/inline-alert/inline-alert.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
+import { ErrorHandler } from '../../../../lib/utils/error-handler';
 
 describe('ForgotPasswordComponent', () => {
     let component: ForgotPasswordComponent;
@@ -16,7 +17,7 @@ describe('ForgotPasswordComponent', () => {
         sendResetPasswordMail: () => of(null)
     };
 
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             declarations: [ForgotPasswordComponent, InlineAlertComponent],
             imports: [
@@ -28,6 +29,7 @@ describe('ForgotPasswordComponent', () => {
             schemas: [CUSTOM_ELEMENTS_SCHEMA],
             providers: [
                 TranslateService,
+                ErrorHandler,
                 { provide: PasswordSettingService, useValue: fakePasswordSettingService }
             ]
         }).compileComponents();

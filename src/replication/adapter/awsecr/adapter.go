@@ -16,16 +16,11 @@ package awsecr
 
 import (
 	"errors"
-	"net/http"
 	"regexp"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
 	awsecrapi "github.com/aws/aws-sdk-go/service/ecr"
-	"github.com/goharbor/harbor/src/common/utils/log"
-	"github.com/goharbor/harbor/src/common/utils/registry"
+	"github.com/goharbor/harbor/src/lib/log"
 	adp "github.com/goharbor/harbor/src/replication/adapter"
 	"github.com/goharbor/harbor/src/replication/adapter/native"
 	"github.com/goharbor/harbor/src/replication/model"
@@ -52,15 +47,16 @@ func newAdapter(registry *model.Registry) (*adapter, error) {
 	if err != nil {
 		return nil, err
 	}
-	authorizer := NewAuth(region, registry.Credential.AccessKey, registry.Credential.AccessSecret, registry.Insecure)
-	dockerRegistry, err := native.NewAdapterWithCustomizedAuthorizer(registry, authorizer)
+	svc, err := getAwsSvc(
+		region, registry.Credential.AccessKey, registry.Credential.AccessSecret, registry.Insecure, nil)
 	if err != nil {
 		return nil, err
 	}
+	authorizer := NewAuth(registry.Credential.AccessKey, svc)
 	return &adapter{
 		registry: registry,
-		Adapter:  dockerRegistry,
-		region:   region,
+		Adapter:  native.NewAdapterWithAuthorizer(registry, authorizer),
+		cacheSvc: svc,
 	}, nil
 }
 
@@ -85,11 +81,15 @@ func (f *factory) AdapterPattern() *model.AdapterPattern {
 	return getAdapterInfo()
 }
 
+var (
+	_ adp.Adapter          = (*adapter)(nil)
+	_ adp.ArtifactRegistry = (*adapter)(nil)
+)
+
 type adapter struct {
 	*native.Adapter
-	registry      *model.Registry
-	region        string
-	forceEndpoint *string
+	registry *model.Registry
+	cacheSvc *awsecrapi.ECR
 }
 
 func (*adapter) Info() (info *model.RegistryInfo, err error) {
@@ -188,6 +188,14 @@ func getAdapterInfo() *model.AdapterPattern {
 					Key:   "sa-east-1",
 					Value: "https://api.ecr.sa-east-1.amazonaws.com",
 				},
+				{
+					Key:   "cn-north-1",
+					Value: "https://api.ecr.cn-north-1.amazonaws.com.cn",
+				},
+				{
+					Key:   "cn-northwest-1",
+					Value: "https://api.ecr.cn-northwest-1.amazonaws.com.cn",
+				},
 			},
 		},
 	}
@@ -196,12 +204,7 @@ func getAdapterInfo() *model.AdapterPattern {
 
 // HealthCheck checks health status of a registry
 func (a *adapter) HealthCheck() (model.HealthStatus, error) {
-	if a.registry.Credential == nil ||
-		len(a.registry.Credential.AccessKey) == 0 || len(a.registry.Credential.AccessSecret) == 0 {
-		log.Errorf("no credential to ping registry %s", a.registry.URL)
-		return model.Unhealthy, nil
-	}
-	if err := a.PingGet(); err != nil {
+	if err := a.Ping(); err != nil {
 		log.Errorf("failed to ping registry %s: %v", a.registry.URL, err)
 		return model.Unhealthy, nil
 	}
@@ -224,7 +227,15 @@ func (a *adapter) PrepareForPush(resources []*model.Resource) error {
 			return errors.New("the name of the namespace cannot be nil")
 		}
 
-		err := a.createRepository(resource.Metadata.Repository.Name)
+		exist, err := a.checkRepository(resource.Metadata.Repository.Name)
+		if err != nil {
+			return err
+		}
+		if exist {
+			log.Infof("Namespace %s already exist in AWS ECR, skip it.", resource.Metadata.Repository.Name)
+			continue
+		}
+		err = a.createRepository(resource.Metadata.Repository.Name)
 		if err != nil {
 			return err
 		}
@@ -232,33 +243,21 @@ func (a *adapter) PrepareForPush(resources []*model.Resource) error {
 	return nil
 }
 
+func (a *adapter) checkRepository(repository string) (exists bool, err error) {
+	out, err := a.cacheSvc.DescribeRepositories(&awsecrapi.DescribeRepositoriesInput{
+		RepositoryNames: []*string{&repository},
+	})
+	if err != nil {
+		return false, err
+	}
+	if len(out.Repositories) > 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (a *adapter) createRepository(repository string) error {
-	if a.registry.Credential == nil ||
-		len(a.registry.Credential.AccessKey) == 0 || len(a.registry.Credential.AccessSecret) == 0 {
-		return errors.New("no credential ")
-	}
-	cred := credentials.NewStaticCredentials(
-		a.registry.Credential.AccessKey,
-		a.registry.Credential.AccessSecret,
-		"")
-	if a.region == "" {
-		return errors.New("no region parsed")
-	}
-	config := &aws.Config{
-		Credentials: cred,
-		Region:      &a.region,
-		HTTPClient: &http.Client{
-			Transport: registry.GetHTTPTransport(a.registry.Insecure),
-		},
-	}
-	if a.forceEndpoint != nil {
-		config.Endpoint = a.forceEndpoint
-	}
-	sess := session.Must(session.NewSession(config))
-
-	svc := awsecrapi.New(sess)
-
-	_, err := svc.CreateRepository(&awsecrapi.CreateRepositoryInput{
+	_, err := a.cacheSvc.CreateRepository(&awsecrapi.CreateRepositoryInput{
 		RepositoryName: &repository,
 	})
 	if err != nil {
@@ -274,33 +273,7 @@ func (a *adapter) createRepository(repository string) error {
 
 // DeleteManifest ...
 func (a *adapter) DeleteManifest(repository, reference string) error {
-	// AWS doesn't implement standard OCI delete manifest API, so use it's sdk.
-	if a.registry.Credential == nil ||
-		len(a.registry.Credential.AccessKey) == 0 || len(a.registry.Credential.AccessSecret) == 0 {
-		return errors.New("no credential ")
-	}
-	cred := credentials.NewStaticCredentials(
-		a.registry.Credential.AccessKey,
-		a.registry.Credential.AccessSecret,
-		"")
-	if a.region == "" {
-		return errors.New("no region parsed")
-	}
-	config := &aws.Config{
-		Credentials: cred,
-		Region:      &a.region,
-		HTTPClient: &http.Client{
-			Transport: registry.GetHTTPTransport(a.registry.Insecure),
-		},
-	}
-	if a.forceEndpoint != nil {
-		config.Endpoint = a.forceEndpoint
-	}
-	sess := session.Must(session.NewSession(config))
-
-	svc := awsecrapi.New(sess)
-
-	_, err := svc.BatchDeleteImage(&awsecrapi.BatchDeleteImageInput{
+	_, err := a.cacheSvc.BatchDeleteImage(&awsecrapi.BatchDeleteImageInput{
 		RepositoryName: &repository,
 		ImageIds:       []*awsecrapi.ImageIdentifier{{ImageTag: &reference}},
 	})

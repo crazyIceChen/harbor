@@ -45,11 +45,19 @@ import (
 	// register the Jfrog Artifactory adapter
 	_ "github.com/goharbor/harbor/src/replication/adapter/jfrog"
 	// register the Quay.io adapter
-	_ "github.com/goharbor/harbor/src/replication/adapter/quayio"
+	_ "github.com/goharbor/harbor/src/replication/adapter/quay"
 	// register the Helm Hub adapter
 	_ "github.com/goharbor/harbor/src/replication/adapter/helmhub"
 	// register the GitLab adapter
 	_ "github.com/goharbor/harbor/src/replication/adapter/gitlab"
+	// register the DTR adapter
+	_ "github.com/goharbor/harbor/src/replication/adapter/dtr"
+	// register the Artifact Hub adapter
+	_ "github.com/goharbor/harbor/src/replication/adapter/artifacthub"
+	// register the TencentCloud TCR adapter
+	_ "github.com/goharbor/harbor/src/replication/adapter/tencentcr"
+	// register the Github Container Registry adapter
+	_ "github.com/goharbor/harbor/src/replication/adapter/githubcr"
 )
 
 // Replication implements the job interface
@@ -58,6 +66,11 @@ type Replication struct{}
 // MaxFails returns that how many times this job can fail
 func (r *Replication) MaxFails() uint {
 	return 3
+}
+
+// MaxCurrency is implementation of same method in Interface.
+func (r *Replication) MaxCurrency() uint {
+	return 0
 }
 
 // ShouldRetry always returns true which means the job is needed to be restarted when fails

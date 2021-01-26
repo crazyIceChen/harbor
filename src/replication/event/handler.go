@@ -18,12 +18,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/goharbor/harbor/src/replication/util"
-
-	"github.com/goharbor/harbor/src/common/utils/log"
+	commonthttp "github.com/goharbor/harbor/src/common/http"
+	"github.com/goharbor/harbor/src/controller/replication"
+	"github.com/goharbor/harbor/src/lib/log"
+	"github.com/goharbor/harbor/src/lib/orm"
+	"github.com/goharbor/harbor/src/pkg/task"
 	"github.com/goharbor/harbor/src/replication/config"
+	"github.com/goharbor/harbor/src/replication/filter"
 	"github.com/goharbor/harbor/src/replication/model"
-	"github.com/goharbor/harbor/src/replication/operation"
 	"github.com/goharbor/harbor/src/replication/policy"
 	"github.com/goharbor/harbor/src/replication/registry"
 )
@@ -34,31 +36,31 @@ type Handler interface {
 }
 
 // NewHandler ...
-func NewHandler(policyCtl policy.Controller, registryMgr registry.Manager, opCtl operation.Controller) Handler {
+func NewHandler(policyCtl policy.Controller, registryMgr registry.Manager) Handler {
 	return &handler{
 		policyCtl:   policyCtl,
 		registryMgr: registryMgr,
-		opCtl:       opCtl,
+		ctl:         replication.Ctl,
 	}
 }
 
 type handler struct {
 	policyCtl   policy.Controller
 	registryMgr registry.Manager
-	opCtl       operation.Controller
+	ctl         replication.Controller
 }
 
 func (h *handler) Handle(event *Event) error {
 	if event == nil || event.Resource == nil ||
 		event.Resource.Metadata == nil ||
-		len(event.Resource.Metadata.Vtags) == 0 {
+		len(event.Resource.Metadata.Artifacts) == 0 {
 		return errors.New("invalid event")
 	}
 	var policies []*model.Policy
 	var err error
 	switch event.Type {
-	case EventTypeImagePush, EventTypeChartUpload,
-		EventTypeImageDelete, EventTypeChartDelete:
+	case EventTypeArtifactPush, EventTypeChartUpload, EventTypeTagDelete,
+		EventTypeArtifactDelete, EventTypeChartDelete:
 		policies, err = h.getRelatedPolicies(event.Resource)
 	default:
 		return fmt.Errorf("unsupported event type %s", event.Type)
@@ -76,7 +78,7 @@ func (h *handler) Handle(event *Event) error {
 		if err := PopulateRegistries(h.registryMgr, policy); err != nil {
 			return err
 		}
-		id, err := h.opCtl.StartReplication(policy, event.Resource, model.TriggerTypeEventBased)
+		id, err := h.ctl.Start(orm.Context(), policy, event.Resource, task.ExecutionTriggerEvent)
 		if err != nil {
 			return err
 		}
@@ -113,37 +115,19 @@ func (h *handler) getRelatedPolicies(resource *model.Resource) ([]*model.Policy,
 		if resource.Deleted && !policy.Deletion {
 			continue
 		}
-		// doesn't match the name filter
-		m, err := match(policy.Filters, resource)
+
+		resources, err := filter.DoFilterResources([]*model.Resource{resource}, policy.Filters)
 		if err != nil {
 			return nil, err
 		}
-		if !m {
+		// doesn't match the filters
+		if len(resources) == 0 {
 			continue
 		}
+
 		result = append(result, policy)
 	}
 	return result, nil
-}
-
-// TODO unify the match logic with other?
-func match(filters []*model.Filter, resource *model.Resource) (bool, error) {
-	match := true
-	repository := resource.Metadata.Repository.Name
-	for _, filter := range filters {
-		if filter.Type != model.FilterTypeName {
-			continue
-		}
-		m, err := util.Match(filter.Value.(string), repository)
-		if err != nil {
-			return false, err
-		}
-		if !m {
-			match = false
-			break
-		}
-	}
-	return match, nil
 }
 
 // PopulateRegistries populates the source registry and destination registry properties for policy
@@ -191,6 +175,6 @@ func GetLocalRegistry() *model.Registry {
 			// use secret to do the auth for the local Harbor
 			AccessSecret: config.Config.JobserviceSecret,
 		},
-		Insecure: true,
+		Insecure: !commonthttp.InternalTLSEnabled(),
 	}
 }

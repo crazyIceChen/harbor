@@ -17,7 +17,7 @@ package auth
 import (
 	"net/http"
 
-	"github.com/pkg/errors"
+	"github.com/goharbor/harbor/src/lib/errors"
 )
 
 // apiKeyAuthorizer authorize by adding a header `X-ScannerAdapter-API-Key` with value "credential"
@@ -37,9 +37,9 @@ func (aa *apiKeyAuthorizer) Authorize(req *http.Request) error {
 }
 
 // NewAPIKeyAuthorizer news a apiKeyAuthorizer
-func NewAPIKeyAuthorizer(accessCred string) Authorizer {
+func NewAPIKeyAuthorizer(key, accessCred string) Authorizer {
 	return &apiKeyAuthorizer{
-		typeID:     APIKey,
+		typeID:     key,
 		accessCred: accessCred,
 	}
 }

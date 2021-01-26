@@ -26,7 +26,7 @@ import { InlineAlertComponent } from '../../../shared/inline-alert/inline-alert.
 import { UserService } from '../../../user/user.service';
 import { MemberService } from '../member.service';
 import { UserGroup } from "../../../group/group";
-import { AppConfigService } from "../../../app-config.service";
+import { AppConfigService } from "../../../services/app-config.service";
 import { ProjectRootInterface } from "../../../../lib/services";
 import { GroupType, PROJECT_ROOTS } from "../../../../lib/entities/shared.const";
 import { errorHandler } from "../../../../lib/utils/shared/shared.utils";
@@ -53,7 +53,7 @@ export class AddHttpAuthGroupComponent implements OnInit {
   @ViewChild('memberForm', {static: true})
   currentForm: NgForm;
 
-  @ViewChild(InlineAlertComponent, {static: false})
+  @ViewChild(InlineAlertComponent)
   inlineAlert: InlineAlertComponent;
 
   @Input() projectId: number;

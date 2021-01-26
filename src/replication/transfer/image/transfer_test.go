@@ -16,14 +16,14 @@ package image
 
 import (
 	"bytes"
+	"github.com/opencontainers/go-digest"
 	"io"
 	"io/ioutil"
 	"testing"
 
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest/schema2"
-	"github.com/goharbor/harbor/src/common/utils/log"
-	pkg_registry "github.com/goharbor/harbor/src/common/utils/registry"
+	"github.com/goharbor/harbor/src/lib/log"
 	"github.com/goharbor/harbor/src/replication/model"
 	trans "github.com/goharbor/harbor/src/replication/transfer"
 	"github.com/stretchr/testify/assert"
@@ -32,17 +32,17 @@ import (
 
 type fakeRegistry struct{}
 
-func (f *fakeRegistry) FetchImages([]*model.Filter) ([]*model.Resource, error) {
+func (f *fakeRegistry) FetchArtifacts([]*model.Filter) ([]*model.Resource, error) {
 	return nil, nil
 }
 
-func (f *fakeRegistry) ManifestExist(repository, reference string) (bool, string, error) {
+func (f *fakeRegistry) ManifestExist(repository, reference string) (bool, *distribution.Descriptor, error) {
 	if repository == "destination" && reference == "b1" {
-		return true, "sha256:c6b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", nil
+		return true, &distribution.Descriptor{Digest: digest.Digest("sha256:c6b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7")}, nil
 	}
-	return false, "sha256:c6b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", nil
+	return false, &distribution.Descriptor{Digest: digest.Digest("sha256:c6b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7")}, nil
 }
-func (f *fakeRegistry) PullManifest(repository, reference string, accepttedMediaTypes []string) (distribution.Manifest, string, error) {
+func (f *fakeRegistry) PullManifest(repository, reference string, accepttedMediaTypes ...string) (distribution.Manifest, string, error) {
 	manifest := `{
 		"schemaVersion": 2,
 		"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
@@ -71,14 +71,14 @@ func (f *fakeRegistry) PullManifest(repository, reference string, accepttedMedia
 	}`
 	mediaType := schema2.MediaTypeManifest
 	payload := []byte(manifest)
-	mani, _, err := pkg_registry.UnMarshal(mediaType, payload)
+	mani, _, err := distribution.UnmarshalManifest(mediaType, payload)
 	if err != nil {
 		return nil, "", err
 	}
 	return mani, "sha256:c6b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7", nil
 }
-func (f *fakeRegistry) PushManifest(repository, reference, mediaType string, payload []byte) error {
-	return nil
+func (f *fakeRegistry) PushManifest(repository, reference, mediaType string, payload []byte) (string, error) {
+	return "", nil
 }
 func (f *fakeRegistry) DeleteManifest(repository, reference string) error {
 	return nil
@@ -91,6 +91,9 @@ func (f *fakeRegistry) PullBlob(repository, digest string) (size int64, blob io.
 	return 1, r, nil
 }
 func (f *fakeRegistry) PushBlob(repository, digest string, size int64, blob io.Reader) error {
+	return nil
+}
+func (f *fakeRegistry) DeleteTag(repository, tag string) error {
 	return nil
 }
 

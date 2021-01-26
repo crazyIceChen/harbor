@@ -15,7 +15,9 @@
 package token
 
 import (
+	"context"
 	"fmt"
+	rbac_project "github.com/goharbor/harbor/src/common/rbac/project"
 	"net/http"
 	"net/url"
 	"strings"
@@ -24,15 +26,23 @@ import (
 	"github.com/goharbor/harbor/src/common/models"
 	"github.com/goharbor/harbor/src/common/rbac"
 	"github.com/goharbor/harbor/src/common/security"
-	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/controller/project"
 	"github.com/goharbor/harbor/src/core/config"
-	"github.com/goharbor/harbor/src/core/filter"
-	"github.com/goharbor/harbor/src/core/promgr"
+	"github.com/goharbor/harbor/src/lib/errors"
+	"github.com/goharbor/harbor/src/lib/log"
 )
 
 var creatorMap map[string]Creator
 var registryFilterMap map[string]accessFilter
 var notaryFilterMap map[string]accessFilter
+var actionScopeMap = map[rbac.Action]string{
+	// Scopes checked by distribution, see: https://github.com/docker/distribution/blob/master/registry/handlers/app.go
+	rbac.ActionPull:   "pull",
+	rbac.ActionPush:   "push",
+	rbac.ActionDelete: "delete",
+	// For skipping policy check when scanner pulls artifacts
+	rbac.ActionScannerPull: "scanner-pull",
+}
 
 const (
 	// Notary service
@@ -128,19 +138,21 @@ func parseImg(s string) (*image, error) {
 
 // An accessFilter will filter access based on userinfo
 type accessFilter interface {
-	filter(ctx security.Context, pm promgr.ProjectManager, a *token.ResourceActions) error
+	filter(ctx context.Context, ctl project.Controller, a *token.ResourceActions) error
 }
 
 type registryFilter struct {
 }
 
-func (reg registryFilter) filter(ctx security.Context, pm promgr.ProjectManager,
+func (reg registryFilter) filter(ctx context.Context, ctl project.Controller,
 	a *token.ResourceActions) error {
 	// Do not filter if the request is to access registry catalog
 	if a.Name != "catalog" {
 		return fmt.Errorf("Unable to handle, type: %s, name: %s", a.Type, a.Name)
 	}
-	if !ctx.IsSysAdmin() {
+
+	secCtx, ok := security.FromContext(ctx)
+	if !ok || !secCtx.IsSysAdmin() {
 		// Set the actions to empty is the user is not admin
 		a.Actions = []string{}
 	}
@@ -152,7 +164,7 @@ type repositoryFilter struct {
 	parser imageParser
 }
 
-func (rep repositoryFilter) filter(ctx security.Context, pm promgr.ProjectManager,
+func (rep repositoryFilter) filter(ctx context.Context, ctl project.Controller,
 	a *token.ResourceActions) error {
 	// clear action list to assign to new acess element after perm check.
 	img, err := rep.parser.parse(a.Name)
@@ -160,31 +172,35 @@ func (rep repositoryFilter) filter(ctx security.Context, pm promgr.ProjectManage
 		return err
 	}
 	projectName := img.namespace
-	permission := ""
 
-	project, err := pm.Get(projectName)
+	project, err := ctl.GetByName(ctx, projectName)
 	if err != nil {
+		if errors.IsNotFoundErr(err) {
+			log.Debugf("project %s does not exist, set empty permission", projectName)
+			a.Actions = []string{}
+			return nil
+		}
 		return err
 	}
-	if project == nil {
-		log.Debugf("project %s does not exist, set empty permission", projectName)
-		a.Actions = []string{}
-		return nil
-	}
 
-	resource := rbac.NewProjectNamespace(project.ProjectID).Resource(rbac.ResourceRepository)
-	if ctx.Can(rbac.ActionPush, resource) && ctx.Can(rbac.ActionPull, resource) {
-		permission = "RWM"
-	} else if ctx.Can(rbac.ActionPush, resource) {
-		permission = "RW"
-	} else if ctx.Can(rbac.ActionScannerPull, resource) {
-		permission = "RS"
-	} else if ctx.Can(rbac.ActionPull, resource) {
-		permission = "R"
+	resource := rbac_project.NewNamespace(project.ProjectID).Resource(rbac.ResourceRepository)
+	scopeList := make([]string, 0)
+	for s := range resourceScopes(ctx, resource) {
+		scopeList = append(scopeList, s)
 	}
-
-	a.Actions = permToActions(permission)
+	a.Actions = scopeList
 	return nil
+}
+
+func resourceScopes(ctx context.Context, rc rbac.Resource) map[string]struct{} {
+	sCtx, _ := security.FromContext(ctx)
+	res := map[string]struct{}{}
+	for a, s := range actionScopeMap {
+		if sCtx.Can(ctx, a, rc) {
+			res[s] = struct{}{}
+		}
+	}
+	return res
 }
 
 type generalCreator struct {
@@ -203,14 +219,9 @@ func (g generalCreator) Create(r *http.Request) (*models.Token, error) {
 	scopes := parseScopes(r.URL)
 	log.Debugf("scopes: %v", scopes)
 
-	ctx, err := filter.GetSecurityContext(r)
-	if err != nil {
+	ctx, ok := security.FromContext(r.Context())
+	if !ok {
 		return nil, fmt.Errorf("failed to  get security context from request")
-	}
-
-	pm, err := filter.GetProjectManager(r)
-	if err != nil {
-		return nil, fmt.Errorf("failed to  get project manager from request")
 	}
 
 	// for docker login
@@ -220,7 +231,7 @@ func (g generalCreator) Create(r *http.Request) (*models.Token, error) {
 		}
 	}
 	access := GetResourceActions(scopes)
-	err = filterAccess(access, ctx, pm, g.filterMap)
+	err = filterAccess(r.Context(), access, project.Ctl, g.filterMap)
 	if err != nil {
 		return nil, err
 	}

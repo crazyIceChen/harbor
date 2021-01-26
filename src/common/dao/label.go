@@ -60,7 +60,7 @@ func ListLabels(query *models.LabelQuery) ([]*models.Label, error) {
 			qs = qs.Offset((query.Page - 1) * query.Size)
 		}
 	}
-	qs = qs.OrderBy("Name")
+	qs = qs.OrderBy("-CreationTime")
 
 	labels := []*models.Label{}
 	_, err := qs.All(&labels)
@@ -71,7 +71,7 @@ func getLabelQuerySetter(query *models.LabelQuery) orm.QuerySeter {
 	qs := GetOrmer().QueryTable(&models.Label{})
 	if len(query.Name) > 0 {
 		if query.FuzzyMatchName {
-			qs = qs.Filter("Name__icontains", query.Name)
+			qs = qs.Filter("Name__icontains", Escape(query.Name))
 		} else {
 			qs = qs.Filter("Name", query.Name)
 		}

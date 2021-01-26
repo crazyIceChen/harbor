@@ -2,26 +2,19 @@ from __future__ import absolute_import
 
 import unittest
 
-from testutils import ADMIN_CLIENT
+from testutils import ADMIN_CLIENT, suppress_urllib3_warning
 from testutils import TEARDOWN
 from library.user import User
 from library.configurations import Configurations
 
 class TestProjects(unittest.TestCase):
-    @classmethod
+    @suppress_urllib3_warning
     def setUp(self):
-        conf = Configurations()
-        self.conf= conf
-
-        user = User()
-        self.user= user
-
-    @classmethod
-    def tearDown(self):
-        print "Case completed"
+        self.conf= Configurations()
+        self.user = User()
 
     @unittest.skipIf(TEARDOWN == False, "Test data won't be erased.")
-    def test_ClearData(self):
+    def tearDown(self):
         #1. Delete user(UA);
         self.user.delete_user(TestProjects.user_assign_sys_admin_id, **ADMIN_CLIENT)
 

@@ -35,8 +35,8 @@ export class ChangePasswordComponent {
     confirmPwd: string = "";
     userId: number;
 
-    @ViewChild("resetPwdForm", { static: false }) resetPwdForm: NgForm;
-    @ViewChild(InlineAlertComponent, { static: false })
+    @ViewChild("resetPwdForm") resetPwdForm: NgForm;
+    @ViewChild(InlineAlertComponent)
     inlineAlert: InlineAlertComponent;
 
     constructor(
@@ -101,7 +101,7 @@ export class ChangePasswordComponent {
             .subscribe(() => {
                 this.onGoing = false;
                 this.opened = false;
-                this.msgHandler.showSuccess("USER.RESET_Ok");
+                this.msgHandler.showSuccess("USER.RESET_OK");
 
                 let hnd = setInterval(() => this.ref.markForCheck(), 100);
                 setTimeout(() => clearInterval(hnd), 2000);

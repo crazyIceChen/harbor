@@ -6,17 +6,20 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { TranslateModule, TranslateLoader, MissingTranslationHandler } from '@ngx-translate/core';
 import { CookieService, CookieModule } from 'ngx-cookie';
 import { MarkdownModule } from 'ngx-markdown';
-import { HttpXsrfTokenExtractorToBeUsed } from '../../services/http-xsrf-token-extractor.service';
 import { IServiceConfig, SERVICE_CONFIG } from "../../entities/service.config";
 import { TranslateHttpLoader } from "@ngx-translate/http-loader";
 import { MyMissingTranslationHandler } from "../../i18n/missing-trans.handler";
 import { TranslatorJsonLoader } from "../../i18n/local-json.loader";
 import { ClipboardModule } from "../../components/third-party/ngx-clipboard";
+import { environment } from '../../../environments/environment';
 
 export function GeneralTranslatorLoader(http: HttpClient, config: IServiceConfig) {
     if (config && config.langMessageLoader === 'http') {
-        let prefix: string = config.langMessagePathForHttpLoader ? config.langMessagePathForHttpLoader : "i18n/lang/";
+        const prefix: string = config.langMessagePathForHttpLoader ? config.langMessagePathForHttpLoader : "i18n/lang/";
         let suffix: string = config.langMessageFileSuffixForHttpLoader ? config.langMessageFileSuffixForHttpLoader : "-lang.json";
+        if (environment && environment.buildTimestamp) {
+            suffix += `?buildTimeStamp=${environment.buildTimestamp}`;
+        }
         return new TranslateHttpLoader(http, prefix, suffix);
     } else {
         return new TranslatorJsonLoader(config);
@@ -33,10 +36,6 @@ export function GeneralTranslatorLoader(http: HttpClient, config: IServiceConfig
     imports: [
         CommonModule,
         HttpClientModule,
-        HttpClientXsrfModule.withOptions({
-            cookieName: '_xsrf',
-            headerName: 'X-Xsrftoken'
-        }),
         FormsModule,
         ReactiveFormsModule,
         ClipboardModule,
@@ -68,6 +67,6 @@ export function GeneralTranslatorLoader(http: HttpClient, config: IServiceConfig
     ],
     providers: [
         CookieService,
-        { provide: HttpXsrfTokenExtractor, useClass: HttpXsrfTokenExtractorToBeUsed }]
+    ]
 })
 export class SharedModule { }

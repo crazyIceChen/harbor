@@ -15,7 +15,6 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -29,6 +28,7 @@ import (
 	"github.com/goharbor/harbor/src/common/rbac"
 	"github.com/goharbor/harbor/src/core/auth"
 	"github.com/goharbor/harbor/src/core/config"
+	"github.com/goharbor/harbor/src/lib/errors"
 )
 
 // ProjectMemberAPI handles request to /api/projects/{}/members/{}
@@ -65,15 +65,16 @@ func (pma *ProjectMemberAPI) Prepare() {
 		pma.SendBadRequestError(errors.New(text))
 		return
 	}
-	pro, err := pma.ProjectMgr.Get(pid)
+	pro, err := pma.ProjectCtl.Get(pma.Context(), pid)
 	if err != nil {
-		pma.ParseAndHandleError(fmt.Sprintf("failed to get project %d", pid), err)
+		if errors.IsNotFoundErr(err) {
+			pma.SendNotFoundError(fmt.Errorf("project %d not found", pid))
+		} else {
+			pma.ParseAndHandleError(fmt.Sprintf("failed to get project %d", pid), err)
+		}
 		return
 	}
-	if pro == nil {
-		pma.SendNotFoundError(fmt.Errorf("project %d not found", pid))
-		return
-	}
+
 	pma.project = pro
 
 	if pma.ParamExistsInPath(":pmid") {
@@ -292,7 +293,7 @@ func AddProjectMember(projectID int64, request models.MemberReq) (int, error) {
 func isValidRole(role int) bool {
 	switch role {
 	case common.RoleProjectAdmin,
-		common.RoleMaster,
+		common.RoleMaintainer,
 		common.RoleDeveloper,
 		common.RoleGuest,
 		common.RoleLimitedGuest:

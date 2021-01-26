@@ -15,10 +15,13 @@ import {filter} from 'rxjs/operators';
 // limitations under the License.
 import { Component, Input, Output, OnDestroy, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef, OnInit } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
-import { Repository, State } from '../../../lib/services/interface';
+import { State } from '../../../lib/services/interface';
+import { Repository } from '../../../../ng-swagger-gen/models/repository';
+
 import { SearchTriggerService } from '../../base/global-search/search-trigger.service';
 import {Subscription} from "rxjs";
-
+import { SessionService } from "../session.service";
+const YES: string = 'yes';
 @Component({
   selector: 'list-repository-ro',
   templateUrl: 'list-repository-ro.component.html',
@@ -36,7 +39,8 @@ export class ListRepositoryROComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private searchTrigger: SearchTriggerService,
-    private ref: ChangeDetectorRef) {
+    private ref: ChangeDetectorRef,
+    private sessionService: SessionService) {
     this.router.routeReuseStrategy.shouldReuseRoute = function() {
         return false;
     };
@@ -66,9 +70,14 @@ export class ListRepositoryROComponent implements OnInit, OnDestroy {
 
   public gotoLink(projectId: number, repoName: string): void {
     this.searchTrigger.closeSearch(true);
-
-    let linkUrl = ['harbor', 'tags', projectId, repoName];
-    this.router.navigate(linkUrl);
+    let projectName = repoName.split('/')[0];
+    let repositorieName = projectName ? repoName.substr(projectName.length + 1) : repoName;
+    let linkUrl = ['harbor', 'projects', projectId, 'repositories', repositorieName ];
+    if (this.sessionService.getCurrentUser()) {
+      this.router.navigate(linkUrl);
+    } else {// if not logged in and it's a public project, add param 'publicAndNotLogged'
+      this.router.navigate(linkUrl, {queryParams: {publicAndNotLogged: YES}});
+    }
   }
 
 }

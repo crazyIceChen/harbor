@@ -3,14 +3,17 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/goharbor/harbor/src/common/rbac"
+	"github.com/goharbor/harbor/src/common/rbac/system"
+	"github.com/goharbor/harbor/src/lib/orm"
+	"github.com/goharbor/harbor/src/pkg/permission/types"
 	"net/http"
 	"strconv"
-	"strings"
 
-	common_http "github.com/goharbor/harbor/src/common/http"
 	"github.com/goharbor/harbor/src/common/utils"
-	"github.com/goharbor/harbor/src/common/utils/log"
 	"github.com/goharbor/harbor/src/core/api/models"
+	"github.com/goharbor/harbor/src/lib/log"
+	"github.com/goharbor/harbor/src/lib/q"
 	"github.com/goharbor/harbor/src/replication"
 	"github.com/goharbor/harbor/src/replication/adapter"
 	"github.com/goharbor/harbor/src/replication/event"
@@ -24,6 +27,7 @@ type RegistryAPI struct {
 	BaseController
 	manager   registry.Manager
 	policyCtl policy.Controller
+	resource  types.Resource
 }
 
 // Prepare validates the user
@@ -33,11 +37,7 @@ func (t *RegistryAPI) Prepare() {
 		t.SendUnAuthorizedError(errors.New("UnAuthorized"))
 		return
 	}
-
-	if !t.SecurityCtx.IsSysAdmin() {
-		t.SendForbiddenError(errors.New(t.SecurityCtx.GetUsername()))
-		return
-	}
+	t.resource = system.NewNamespace().Resource(rbac.ResourceRegistry)
 
 	t.manager = replication.RegistryMgr
 	t.policyCtl = replication.PolicyCtl
@@ -45,6 +45,10 @@ func (t *RegistryAPI) Prepare() {
 
 // Ping checks health status of a registry
 func (t *RegistryAPI) Ping() {
+	if !t.SecurityCtx.Can(orm.Context(), rbac.ActionRead, t.resource) {
+		t.SendForbiddenError(errors.New(t.SecurityCtx.GetUsername()))
+		return
+	}
 	req := struct {
 		ID             *int64  `json:"id"`
 		Type           *string `json:"type"`
@@ -110,26 +114,21 @@ func (t *RegistryAPI) Ping() {
 		return
 	}
 
-	status, err := registry.CheckHealthStatus(reg)
-	if err != nil {
-		e, ok := err.(*common_http.Error)
-		if ok && e.Code == http.StatusUnauthorized {
-			t.SendBadRequestError(errors.New("invalid credential"))
-			return
-		}
-		t.SendInternalServerError(fmt.Errorf("failed to check health of registry %s: %v", reg.URL, err))
+	status := t.getHealthStatus(reg)
+	if status != model.Healthy {
+		t.SendBadRequestError(errors.New("the registry is unhealthy"))
 		return
 	}
 
-	if status != model.Healthy {
-		t.SendBadRequestError(errors.New(""))
-		return
-	}
 	return
 }
 
 // Get gets a registry by id.
 func (t *RegistryAPI) Get() {
+	if !t.SecurityCtx.Can(orm.Context(), rbac.ActionRead, t.resource) {
+		t.SendForbiddenError(errors.New(t.SecurityCtx.GetUsername()))
+		return
+	}
 	id, err := t.GetIDFromURL()
 	if err != nil {
 		t.SendBadRequestError(err)
@@ -165,15 +164,28 @@ func hideAccessSecret(credential *model.Credential) {
 	credential.AccessSecret = "*****"
 }
 
-// List lists all registries that match a given registry name.
+// List lists all registries
 func (t *RegistryAPI) List() {
-	name := t.GetString("name")
-
-	_, registries, err := t.manager.List(&model.RegistryQuery{
-		Name: name,
-	})
+	if !t.SecurityCtx.Can(orm.Context(), rbac.ActionList, rbac.ResourceRegistry) {
+		t.SendForbiddenError(errors.New(t.SecurityCtx.GetUsername()))
+		return
+	}
+	queryStr := t.GetString("q")
+	// keep backward compatibility for the "name" query
+	if len(queryStr) == 0 {
+		name := t.GetString("name")
+		if len(name) > 0 {
+			queryStr = fmt.Sprintf("name=~%s", name)
+		}
+	}
+	query, err := q.Build(queryStr, 0, 0)
 	if err != nil {
-		log.Errorf("failed to list registries %s: %v", name, err)
+		t.SendError(err)
+		return
+	}
+
+	_, registries, err := t.manager.List(query)
+	if err != nil {
 		t.SendInternalServerError(err)
 		return
 	}
@@ -190,6 +202,10 @@ func (t *RegistryAPI) List() {
 
 // Post creates a registry
 func (t *RegistryAPI) Post() {
+	if !t.SecurityCtx.Can(orm.Context(), rbac.ActionCreate, t.resource) {
+		t.SendForbiddenError(errors.New(t.SecurityCtx.GetUsername()))
+		return
+	}
 	r := &model.Registry{}
 	isValid, err := t.DecodeJSONReqAndValidate(r)
 	if !isValid {
@@ -208,21 +224,21 @@ func (t *RegistryAPI) Post() {
 		t.SendConflictError(fmt.Errorf("name '%s' is already used", r.Name))
 		return
 	}
-	i := strings.Index(r.URL, "://")
-	if i == -1 {
-		r.URL = fmt.Sprintf("http://%s", r.URL)
-	}
-
-	status, err := registry.CheckHealthStatus(r)
+	url, err := utils.ParseEndpoint(r.URL)
 	if err != nil {
-		t.SendBadRequestError(fmt.Errorf("health check to registry %s failed: %v", r.URL, err))
+		t.SendBadRequestError(err)
 		return
 	}
+	// Prevent SSRF security issue #3755
+	r.URL = url.Scheme + "://" + url.Host + url.Path
+
+	status := t.getHealthStatus(r)
 	if status != model.Healthy {
-		t.SendBadRequestError(fmt.Errorf("registry %s is unhealthy: %s", r.URL, status))
+		t.SendBadRequestError(errors.New("the registry is unhealthy"))
 		return
 	}
 
+	r.Status = model.Healthy
 	id, err := t.manager.Add(r)
 	if err != nil {
 		log.Errorf("Add registry '%s' error: %v", r.URL, err)
@@ -233,8 +249,21 @@ func (t *RegistryAPI) Post() {
 	t.Redirect(http.StatusCreated, strconv.FormatInt(id, 10))
 }
 
+func (t *RegistryAPI) getHealthStatus(r *model.Registry) string {
+	status, err := registry.CheckHealthStatus(r)
+	if err != nil {
+		log.Errorf("failed to check the health status of registry %s: %v", r.URL, err)
+		return model.Unhealthy
+	}
+	return string(status)
+}
+
 // Put updates a registry
 func (t *RegistryAPI) Put() {
+	if !t.SecurityCtx.Can(t.Context(), rbac.ActionUpdate, t.resource) {
+		t.SendForbiddenError(errors.New(t.SecurityCtx.GetUsername()))
+		return
+	}
 	id, err := t.GetIDFromURL()
 	if err != nil {
 		t.SendBadRequestError(err)
@@ -299,16 +328,13 @@ func (t *RegistryAPI) Put() {
 		}
 	}
 
-	status, err := registry.CheckHealthStatus(r)
-	if err != nil {
-		t.SendBadRequestError(fmt.Errorf("health check to registry %s failed: %v", r.URL, err))
-		return
-	}
+	status := t.getHealthStatus(r)
 	if status != model.Healthy {
-		t.SendBadRequestError(fmt.Errorf("registry %s is unhealthy: %s", r.URL, status))
+		t.SendBadRequestError(errors.New("the registry is unhealthy"))
 		return
 	}
 
+	r.Status = model.Healthy
 	if err := t.manager.Update(r); err != nil {
 		log.Errorf("Update registry %d error: %v", id, err)
 		t.SendInternalServerError(err)
@@ -318,6 +344,10 @@ func (t *RegistryAPI) Put() {
 
 // Delete deletes a registry
 func (t *RegistryAPI) Delete() {
+	if !t.SecurityCtx.Can(orm.Context(), rbac.ActionDelete, t.resource) {
+		t.SendForbiddenError(errors.New(t.SecurityCtx.GetUsername()))
+		return
+	}
 	id, err := t.GetIDFromURL()
 	if err != nil {
 		t.SendBadRequestError(err)
@@ -371,6 +401,17 @@ func (t *RegistryAPI) Delete() {
 		return
 	}
 
+	// check whether the registry is referenced by any proxy cache projects
+	count, err := t.ProjectCtl.Count(t.Context(), q.New(q.KeyWords{"registry_id": id}))
+	if err != nil {
+		t.SendInternalServerError(fmt.Errorf("failed to list projects: %v", err))
+		return
+	}
+	if count > 0 {
+		t.SendPreconditionFailedError(fmt.Errorf("Can't delete registry %d,  %d proxy cache projects referennce it", id, count))
+		return
+	}
+
 	if err := t.manager.Remove(id); err != nil {
 		msg := fmt.Sprintf("Delete registry %d error: %v", id, err)
 		log.Error(msg)
@@ -381,6 +422,10 @@ func (t *RegistryAPI) Delete() {
 
 // GetInfo returns the base info and capability declarations of the registry
 func (t *RegistryAPI) GetInfo() {
+	if !t.SecurityCtx.Can(orm.Context(), rbac.ActionRead, t.resource) {
+		t.SendForbiddenError(errors.New(t.SecurityCtx.GetUsername()))
+		return
+	}
 	id, err := t.GetInt64FromPath(":id")
 	// "0" is used for the ID of the local Harbor registry
 	if err != nil || id < 0 {
@@ -414,7 +459,7 @@ func (t *RegistryAPI) GetInfo() {
 	}
 	info, err := adp.Info()
 	if err != nil {
-		t.SendInternalServerError(fmt.Errorf("failed to get registry info %d: %v", id, err))
+		t.ParseAndHandleError(fmt.Sprintf("failed to get registry info %d", id), err)
 		return
 	}
 	// currently, only the local Harbor registry supports the event based trigger, append it here

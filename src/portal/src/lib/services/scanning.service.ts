@@ -2,9 +2,12 @@ import { HttpClient, HttpHeaders } from "@angular/common/http";
 import { Injectable, Inject } from "@angular/core";
 
 import { SERVICE_CONFIG, IServiceConfig } from "../entities/service.config";
-import { buildHttpRequestOptions, DEFAULT_SUPPORTED_MIME_TYPE, HTTP_JSON_OPTIONS } from "../utils/utils";
+import {
+  CURRENT_BASE_HREF,
+  HTTP_JSON_OPTIONS
+} from "../utils/utils";
 import { RequestQueryParams } from "./RequestQueryParams";
-import { VulnerabilityDetail, VulnerabilitySummary } from "./interface";
+import { VulnerabilitySummary } from "./interface";
 import { map, catchError } from "rxjs/operators";
 import { Observable, of, throwError as observableThrowError } from "rxjs";
 
@@ -32,23 +35,6 @@ export abstract class ScanningResultService {
     queryParams?: RequestQueryParams
   ):
     | Observable<VulnerabilitySummary>;
-
-  /**
-   * Get the detailed vulnerabilities scanning results.
-   *
-   * @abstract
-   *  ** deprecated param {string} tagId
-   * returns {(Observable<VulnerabilityItem[]>)}
-   *
-   * @memberOf ScanningResultService
-   */
-  abstract getVulnerabilityScanningResults(
-    repoName: string,
-    tagId: string,
-    queryParams?: RequestQueryParams
-  ):
-    | Observable<any>;
-
   /**
    * Start a new vulnerability scanning
    *
@@ -60,8 +46,9 @@ export abstract class ScanningResultService {
    * @memberOf ScanningResultService
    */
   abstract startVulnerabilityScanning(
+    projectName: string,
     repoName: string,
-    tagId: string
+    artifactDigest: string
   ): Observable<any>;
 
   /**
@@ -90,7 +77,7 @@ export abstract class ScanningResultService {
 
 @Injectable()
 export class ScanningResultDefaultService extends ScanningResultService {
-  _baseUrl: string = "/api/repositories";
+  _baseUrl: string = CURRENT_BASE_HREF + "/projects";
 
   constructor(
     private http: HttpClient,
@@ -114,42 +101,18 @@ export class ScanningResultDefaultService extends ScanningResultService {
 
     return of({} as VulnerabilitySummary);
   }
-
-  getVulnerabilityScanningResults(
-    repoName: string,
-    tagId: string,
-    queryParams?: RequestQueryParams
-  ):
-    | Observable<any> {
-    if (!repoName || repoName.trim() === "" || !tagId || tagId.trim() === "") {
-      return observableThrowError("Bad argument");
-    }
-
-    let httpOptions = buildHttpRequestOptions(queryParams);
-    let requestHeaders = httpOptions.headers as HttpHeaders;
-    // Change the accept header to the supported report mime types
-    httpOptions.headers = requestHeaders.set("Accept", DEFAULT_SUPPORTED_MIME_TYPE);
-
-    return this.http
-      .get(
-        `${this._baseUrl}/${repoName}/tags/${tagId}/scan`,
-        httpOptions
-      )
-      .pipe(map(response => response as VulnerabilityDetail)
-      , catchError(error => observableThrowError(error)));
-  }
-
   startVulnerabilityScanning(
+    projectName: string,
     repoName: string,
-    tagId: string
+    artifactDigest: string
   ): Observable<any> {
-    if (!repoName || repoName.trim() === "" || !tagId || tagId.trim() === "") {
+    if (!repoName || repoName.trim() === "" || !artifactDigest || artifactDigest.trim() === "") {
       return observableThrowError("Bad argument");
     }
 
     return this.http
       .post(
-        `${this._baseUrl}/${repoName}/tags/${tagId}/scan`,
+        `${ CURRENT_BASE_HREF }/projects//${projectName}/repositories/${repoName}/artifacts/${artifactDigest}/scan`,
         HTTP_JSON_OPTIONS
       )
       .pipe(map(() => {
@@ -167,12 +130,12 @@ export class ScanningResultDefaultService extends ScanningResultService {
       , catchError(error => observableThrowError(error)));
   }
   getScannerMetadata(uuid: string): Observable<any> {
-    return this.http.get(`/api/scanners/${uuid}/metadata`)
+    return this.http.get(`${ CURRENT_BASE_HREF }/scanners/${uuid}/metadata`)
         .pipe(map(response => response as any))
         .pipe(catchError(error => observableThrowError(error)));
   }
   getProjectScanner(projectId: number): Observable<any> {
-    return this.http.get(`/api/projects/${projectId}/scanner`)
+    return this.http.get(`${ CURRENT_BASE_HREF }/projects/${projectId}/scanner`)
         .pipe(map(response => response as any))
         .pipe(catchError(error => observableThrowError(error)));
   }

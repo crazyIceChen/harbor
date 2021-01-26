@@ -1,9 +1,10 @@
 appname = Harbor
-runmode = dev
+runmode = prod
 enablegzip = true
 
-[dev]
-httpport = 8080
-EnableXSRF = true
-XSRFKey = {{xsrf_key}}
-XSRFExpire = 3600
+[prod]
+{% if internal_tls.enabled %}
+httpport = {{8443}}
+{% else %}
+httpport = {{8080}}
+{% endif %}

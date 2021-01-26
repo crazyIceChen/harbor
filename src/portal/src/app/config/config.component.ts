@@ -17,7 +17,7 @@ import { ConfirmationTargets, ConfirmationState } from '../shared/shared.const';
 import { SessionService } from '../shared/session.service';
 import { ConfirmationDialogService } from '../shared/confirmation-dialog/confirmation-dialog.service';
 import { MessageHandlerService } from '../shared/message-handler/message-handler.service';
-import { AppConfigService } from '../app-config.service';
+import { AppConfigService } from '../services/app-config.service';
 import { ConfigurationAuthComponent } from './auth/config-auth.component';
 import { ConfigurationEmailComponent } from './email/config-email.component';
 import { ConfigurationService } from './config.service';
@@ -46,9 +46,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     originalCopy: Configuration = new Configuration();
     confirmSub: Subscription;
 
-    @ViewChild(SystemSettingsComponent, {static: false}) systemSettingsConfig: SystemSettingsComponent;
-    @ViewChild(ConfigurationEmailComponent, {static: false}) mailConfig: ConfigurationEmailComponent;
-    @ViewChild(ConfigurationAuthComponent, {static: false}) authConfig: ConfigurationAuthComponent;
+    @ViewChild(SystemSettingsComponent) systemSettingsConfig: SystemSettingsComponent;
+    @ViewChild(ConfigurationEmailComponent) mailConfig: ConfigurationEmailComponent;
+    @ViewChild(ConfigurationAuthComponent) authConfig: ConfigurationAuthComponent;
 
     constructor(
         private msgHandler: MessageHandlerService,

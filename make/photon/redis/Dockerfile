@@ -1,5 +1,6 @@
 ARG harbor_base_image_version
-FROM goharbor/harbor-redis-base:${harbor_base_image_version}
+ARG harbor_base_namespace
+FROM ${harbor_base_namespace}/harbor-redis-base:${harbor_base_image_version}
 
 VOLUME /var/lib/redis
 WORKDIR /var/lib/redis
@@ -10,5 +11,4 @@ RUN chmod +x /usr/bin/docker-healthcheck \
 
 HEALTHCHECK CMD ["docker-healthcheck"]
 USER redis
-EXPOSE 6379
 CMD ["redis-server", "/etc/redis.conf"]

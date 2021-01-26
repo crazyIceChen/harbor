@@ -17,21 +17,81 @@ package vuln
 import (
 	"time"
 
+	"github.com/goharbor/harbor/src/common/models"
+	"github.com/goharbor/harbor/src/jobservice/job"
 	v1 "github.com/goharbor/harbor/src/pkg/scan/rest/v1"
 )
 
 // NativeReportSummary is the default supported scan report summary model.
-// Generated based on the report with v1.MimeTypeNativeReport mime type.
+// Generated based on the report with v1.MimeTypeNativeReport or the v1.MimeTypeGenericVulnerabilityReport mime type.
 type NativeReportSummary struct {
-	ReportID    string                `json:"report_id"`
-	ScanStatus  string                `json:"scan_status"`
-	Severity    Severity              `json:"severity"`
-	Duration    int64                 `json:"duration"`
-	Summary     *VulnerabilitySummary `json:"summary"`
-	CVEBypassed []string              `json:"-"`
-	StartTime   time.Time             `json:"start_time"`
-	EndTime     time.Time             `json:"end_time"`
-	Scanner     *v1.Scanner           `json:"scanner,omitempty"`
+	ReportID        string                `json:"report_id"`
+	ScanStatus      string                `json:"scan_status"`
+	Severity        Severity              `json:"severity"`
+	Duration        int64                 `json:"duration"`
+	Summary         *VulnerabilitySummary `json:"summary"`
+	CVEBypassed     []string              `json:"-"`
+	StartTime       time.Time             `json:"start_time"`
+	EndTime         time.Time             `json:"end_time"`
+	Scanner         *v1.Scanner           `json:"scanner,omitempty"`
+	CompletePercent int                   `json:"complete_percent"`
+
+	TotalCount            int                    `json:"-"`
+	CompleteCount         int                    `json:"-"`
+	VulnerabilityItemList *VulnerabilityItemList `json:"-"`
+	CVESet                models.CVESet          `json:"-"`
+}
+
+// UpdateSeveritySummaryAndByPassed update the Severity, Summary and CVEBypassed of the sum from l and s
+func (sum *NativeReportSummary) UpdateSeveritySummaryAndByPassed(l *VulnerabilityItemList, s models.CVESet) {
+	sum.VulnerabilityItemList = l
+	sum.CVESet = s
+
+	if l == nil {
+		return
+	}
+
+	var severity Severity
+	severity, sum.Summary, sum.CVEBypassed = l.GetSeveritySummaryAndByPassed(s)
+
+	if len(s) > 0 {
+		// Override the overall severity of the filtered list if needed.
+		sum.Severity = severity
+	}
+}
+
+// IsSuccessStatus returns true when the scan status is success
+func (sum *NativeReportSummary) IsSuccessStatus() bool {
+	return sum.ScanStatus == job.SuccessStatus.String()
+}
+
+// Merge ...
+func (sum *NativeReportSummary) Merge(another *NativeReportSummary) *NativeReportSummary {
+	r := &NativeReportSummary{}
+
+	r.StartTime = minTime(sum.StartTime, another.StartTime)
+	r.EndTime = maxTime(sum.EndTime, another.EndTime)
+	r.Duration = r.EndTime.Unix() - r.StartTime.Unix()
+	// choose the scanner from the newer summary
+	// because the endtime of the summary is from the newer summary
+	if sum.StartTime.After(another.StartTime) {
+		r.Scanner = sum.Scanner
+	} else {
+		r.Scanner = another.Scanner
+	}
+	r.TotalCount = sum.TotalCount + another.TotalCount
+	r.CompleteCount = sum.CompleteCount + another.CompleteCount
+	r.CompletePercent = r.CompleteCount * 100 / r.TotalCount
+	r.ReportID = mergeReportID(sum.ReportID, another.ReportID)
+	r.Severity = mergeSeverity(sum.Severity, another.Severity)
+	r.ScanStatus = mergeScanStatus(sum.ScanStatus, another.ScanStatus)
+
+	r.UpdateSeveritySummaryAndByPassed(
+		NewVulnerabilityItemList(sum.VulnerabilityItemList, another.VulnerabilityItemList),
+		models.NewCVESet(sum.CVESet, another.CVESet),
+	)
+
+	return r
 }
 
 // VulnerabilitySummary contains the total number of the found vulnerabilities number

@@ -16,8 +16,6 @@ package model
 
 import (
 	"time"
-
-	"github.com/goharbor/harbor/src/common/models"
 )
 
 // const definition
@@ -31,10 +29,14 @@ const (
 	RegistryTypeAzureAcr         RegistryType = "azure-acr"
 	RegistryTypeAliAcr           RegistryType = "ali-acr"
 	RegistryTypeJfrogArtifactory RegistryType = "jfrog-artifactory"
-	RegistryTypeQuayio           RegistryType = "quay-io"
+	RegistryTypeQuay             RegistryType = "quay"
 	RegistryTypeGitLab           RegistryType = "gitlab"
+	RegistryTypeDTR              RegistryType = "dtr"
+	RegistryTypeTencentTcr       RegistryType = "tencent-tcr"
+	RegistryTypeGithubCR         RegistryType = "github-ghcr"
 
-	RegistryTypeHelmHub RegistryType = "helm-hub"
+	RegistryTypeHelmHub     RegistryType = "helm-hub"
+	RegistryTypeArtifactHub RegistryType = "artifact-hub"
 
 	FilterStyleTypeText  = "input"
 	FilterStyleTypeRadio = "radio"
@@ -99,14 +101,6 @@ type Registry struct {
 	Status          string      `json:"status"`
 	CreationTime    time.Time   `json:"creation_time"`
 	UpdateTime      time.Time   `json:"update_time"`
-}
-
-// RegistryQuery defines the query conditions for listing registries
-type RegistryQuery struct {
-	// Name is name of the registry to query
-	Name string
-	// Pagination specifies the pagination
-	Pagination *models.Pagination
 }
 
 // FilterStyle ...

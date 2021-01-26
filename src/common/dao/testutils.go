@@ -20,7 +20,7 @@ import (
 	"strconv"
 
 	"github.com/goharbor/harbor/src/common/models"
-	"github.com/goharbor/harbor/src/common/utils/log"
+	"github.com/goharbor/harbor/src/lib/log"
 )
 
 var defaultRegistered = false
@@ -61,11 +61,13 @@ func PrepareTestForPostgresSQL() {
 	database := &models.Database{
 		Type: "postgresql",
 		PostGreSQL: &models.PostGreSQL{
-			Host:     dbHost,
-			Port:     dbPort,
-			Username: dbUser,
-			Password: dbPassword,
-			Database: dbDatabase,
+			Host:         dbHost,
+			Port:         dbPort,
+			Username:     dbUser,
+			Password:     dbPassword,
+			Database:     dbDatabase,
+			MaxIdleConns: 50,
+			MaxOpenConns: 100,
 		},
 	}
 
@@ -94,7 +96,7 @@ func initDatabaseForTest(db *models.Database) {
 	}
 
 	if alias != "default" {
-		if err = globalOrm.Using(alias); err != nil {
+		if err = GetOrmer().Using(alias); err != nil {
 			log.Fatalf("failed to create new orm: %v", err)
 		}
 	}

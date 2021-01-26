@@ -33,8 +33,10 @@ type Artifact struct {
 	ManifestMediaType string    `orm:"column(manifest_media_type)"` // the media type of manifest/index
 	ProjectID         int64     `orm:"column(project_id)"`          // needed for quota
 	RepositoryID      int64     `orm:"column(repository_id)"`
+	RepositoryName    string    `orm:"column(repository_name)"`
 	Digest            string    `orm:"column(digest)"`
 	Size              int64     `orm:"column(size)"`
+	Icon              string    `orm:"column(icon)"`
 	PushTime          time.Time `orm:"column(push_time)"`
 	PullTime          time.Time `orm:"column(pull_time)"`
 	ExtraAttrs        string    `orm:"column(extra_attrs)"`             // json string
@@ -43,16 +45,18 @@ type Artifact struct {
 
 // TableName for artifact
 func (a *Artifact) TableName() string {
-	// TODO use "artifact" after finishing the upgrade/migration work
-	return "artifact_2"
+	return "artifact"
 }
 
 // ArtifactReference records the child artifact referenced by parent artifact
 type ArtifactReference struct {
-	ID       int64  `orm:"pk;auto;column(id)"`
-	ParentID int64  `orm:"column(parent_id)"`
-	ChildID  int64  `orm:"column(child_id)"`
-	Platform string `orm:"column(platform)"` // json string
+	ID          int64  `orm:"pk;auto;column(id)"`
+	ParentID    int64  `orm:"column(parent_id)"`
+	ChildID     int64  `orm:"column(child_id)"`
+	ChildDigest string `orm:"column(child_digest)"`
+	Platform    string `orm:"column(platform)"` // json string
+	URLs        string `orm:"column(urls)"`     // json string
+	Annotations string `orm:"column(annotations);type(jsonb)"`
 }
 
 // TableName for artifact reference

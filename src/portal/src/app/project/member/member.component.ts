@@ -28,7 +28,7 @@ import { AddGroupComponent } from './add-group/add-group.component';
 import { AddHttpAuthGroupComponent } from './add-http-auth-group/add-http-auth-group.component';
 import { MemberService } from "./member.service";
 import { AddMemberComponent } from "./add-member/add-member.component";
-import { AppConfigService } from "../../app-config.service";
+import { AppConfigService } from "../../services/app-config.service";
 import { map, catchError } from "rxjs/operators";
 import { throwError as observableThrowError } from "rxjs";
 import { OperationService } from "../../../lib/components/operation/operation.service";
@@ -63,12 +63,12 @@ export class MemberComponent implements OnInit, OnDestroy {
   isLdapMode: boolean;
   isHttpAuthMode: boolean;
   isOidcMode: boolean;
-  @ViewChild(AddMemberComponent, {static: false})
+  @ViewChild(AddMemberComponent)
   addMemberComponent: AddMemberComponent;
 
-  @ViewChild(AddGroupComponent, {static: false})
+  @ViewChild(AddGroupComponent)
   addGroupComponent: AddGroupComponent;
-  @ViewChild(AddHttpAuthGroupComponent, {static: false})
+  @ViewChild(AddHttpAuthGroupComponent)
   addHttpAuthGroupComponent: AddHttpAuthGroupComponent;
   hasCreateMemberPermission: boolean;
   hasUpdateMemberPermission: boolean;
@@ -202,7 +202,7 @@ export class MemberComponent implements OnInit, OnDestroy {
         .changeMemberRole(projectId, member.id, roleId)
         .pipe(map(() => this.batchChangeRoleInfos[member.id] = 'done')
           , catchError(error => {
-            this.messageHandlerService.handleError(error + ": " + member.entity_name);
+            this.messageHandlerService.handleError(error);
             return observableThrowError(error);
           }));
     };
@@ -278,7 +278,7 @@ export class MemberComponent implements OnInit, OnDestroy {
           this.translate.get(message).subscribe(res =>
             operateChanges(operMessage, OperationState.failure, res)
           );
-          return observableThrowError(message);
+          return observableThrowError(error);
         }));
     };
 
@@ -289,6 +289,8 @@ export class MemberComponent implements OnInit, OnDestroy {
       this.selectedRow = [];
       this.batchOps = 'idle';
       this.retrieve(this.projectId, "");
+    }, error => {
+      this.errorHandler.error(error);
     });
   }
   getMemberPermissionRule(projectId: number): void {

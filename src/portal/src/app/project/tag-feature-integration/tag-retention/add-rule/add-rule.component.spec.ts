@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AddRuleComponent } from './add-rule.component';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
@@ -11,11 +11,13 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { TagRetentionService } from "../tag-retention.service";
 import { InlineAlertComponent } from "../../../../shared/inline-alert/inline-alert.component";
 import { delay } from 'rxjs/operators';
+import { ErrorHandler } from '../../../../../lib/utils/error-handler';
 describe('AddRuleComponent', () => {
     let component: AddRuleComponent;
     let fixture: ComponentFixture<AddRuleComponent>;
     const mockTagRetentionService = { };
-    beforeEach(async(() => {
+
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             schemas: [
                 CUSTOM_ELEMENTS_SCHEMA
@@ -32,6 +34,7 @@ describe('AddRuleComponent', () => {
             declarations: [AddRuleComponent, InlineAlertComponent],
             providers: [
                 TranslateService,
+                ErrorHandler,
                 { provide: TagRetentionService, useValue: mockTagRetentionService },
             ]
         })

@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ResetPasswordComponent } from './reset-password.component';
@@ -9,6 +9,7 @@ import { MessageHandlerService } from '../../../shared/message-handler/message-h
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ClarityModule } from '@clr/angular';
 import { InlineAlertComponent } from '../../../shared/inline-alert/inline-alert.component';
+import { ErrorHandler } from '../../../../lib/utils/error-handler';
 
 describe('ResetPasswordComponent', () => {
     let component: ResetPasswordComponent;
@@ -16,7 +17,7 @@ describe('ResetPasswordComponent', () => {
     let fakePasswordSettingService = null;
     let fakeMessageHandlerService = null;
 
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             imports: [
                 TranslateModule.forRoot(),
@@ -30,6 +31,7 @@ describe('ResetPasswordComponent', () => {
                 TranslateService,
                 { provide: PasswordSettingService, useValue: fakePasswordSettingService },
                 { provide: MessageHandlerService, useValue: fakeMessageHandlerService },
+                ErrorHandler
             ],
             schemas: [CUSTOM_ELEMENTS_SCHEMA]
         }).compileComponents();

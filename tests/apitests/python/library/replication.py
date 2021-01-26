@@ -13,8 +13,7 @@ class Replication(base.Base):
             name = base._random_name("rule")
         if filters is None:
             filters = []
-        for policy_filter in filters:
-            policy_filter["value"] = int(policy_filter["value"])
+
         client = self._get_client(**kwargs)
         policy = swagger_client.ReplicationPolicy(name=name, description=description,dest_namespace=dest_namespace,
             dest_registry=dest_registry, src_registry=src_registry,filters=filters,
@@ -39,35 +38,12 @@ class Replication(base.Base):
         if str(rule_data.name) != str(expect_rule_name):
             raise Exception(r"Check replication rule failed, expect <{}> actual <{}>.".format(expect_rule_name, str(rule_data.name)))
         else:
-            print r"Check Replication rule passed, rule name <{}>.".format(str(rule_data.name))
+            print(r"Check Replication rule passed, rule name <{}>.".format(str(rule_data.name)))
             #get_trigger = str(rule_data.trigger.kind)
             #if expect_trigger is not None and get_trigger == str(expect_trigger):
             #    print r"Check Replication rule trigger passed, trigger name <{}>.".format(get_trigger)
             #else:
             #    raise Exception(r"Check replication rule trigger failed, expect <{}> actual <{}>.".format(expect_trigger, get_trigger))
-
-
-    def start_replication(self, rule_id, **kwargs):
-        client = self._get_client(**kwargs)
-        return client.replications_post(swagger_client.Replication(int(rule_id)))
-
-    def list_replication_jobs(self, rule_id, **kwargs):
-        client = self._get_client(**kwargs)
-        return client.jobs_replication_get(int(rule_id))
-
-    def wait_until_jobs_finish(self, rule_id, retry=10, interval=5, **kwargs):
-        finished = True
-        for i in range(retry):
-            finished = True
-            jobs = self.list_replication_jobs(rule_id, **kwargs)
-            for job in jobs:
-                if job.status != "finished":
-                    finished = False
-                    break
-            if not finished:
-                time.sleep(interval)
-        if not finished:
-            raise Exception("The jobs not finished")
 
     def delete_replication_rule(self, rule_id, expect_status_code = 200, **kwargs):
         client = self._get_client(**kwargs)

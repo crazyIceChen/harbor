@@ -17,6 +17,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/goharbor/harbor/src/common/rbac/system"
 	"net/http"
 	"strconv"
 
@@ -24,6 +25,8 @@ import (
 	"github.com/goharbor/harbor/src/common/dao"
 	"github.com/goharbor/harbor/src/common/models"
 	"github.com/goharbor/harbor/src/common/rbac"
+	"github.com/goharbor/harbor/src/lib/orm"
+	"github.com/goharbor/harbor/src/pkg/label"
 )
 
 // LabelAPI handles requests for label management
@@ -73,7 +76,8 @@ func (l *LabelAPI) requireAccess(label *models.Label, action rbac.Action, subres
 
 	switch label.Scope {
 	case common.LabelScopeGlobal:
-		hasPermission = l.SecurityCtx.IsSysAdmin()
+		resource := system.NewNamespace().Resource(rbac.ResourceLabel)
+		hasPermission = l.SecurityCtx.Can(l.Context(), action, resource)
 	case common.LabelScopeProject:
 		if len(subresources) == 0 {
 			subresources = append(subresources, rbac.ResourceLabel)
@@ -108,7 +112,7 @@ func (l *LabelAPI) Post() {
 	case common.LabelScopeGlobal:
 		label.ProjectID = 0
 	case common.LabelScopeProject:
-		exist, err := l.ProjectMgr.Exists(label.ProjectID)
+		exist, err := l.ProjectCtl.Exists(l.Context(), label.ProjectID)
 		if err != nil {
 			l.SendInternalServerError(fmt.Errorf("failed to check the existence of project %d: %v",
 				label.ProjectID, err))
@@ -293,57 +297,14 @@ func (l *LabelAPI) Delete() {
 		l.SendInternalServerError(fmt.Errorf("failed to delete resource label mappings of label %d: %v", id, err))
 		return
 	}
+
+	if err := label.Mgr.RemoveFromAllArtifacts(orm.Context(), id); err != nil {
+		l.SendInternalServerError(fmt.Errorf("failed to remove the label %d from all artifacts: %v", id, err))
+		return
+	}
+
 	if err := dao.DeleteLabel(id); err != nil {
 		l.SendInternalServerError(fmt.Errorf("failed to delete label %d: %v", id, err))
 		return
 	}
-}
-
-// ListResources lists the resources that the label is referenced by
-func (l *LabelAPI) ListResources() {
-	id, err := l.GetInt64FromPath(":id")
-	if err != nil || id <= 0 {
-		l.SendBadRequestError(errors.New("invalid label ID"))
-		return
-	}
-
-	label, err := dao.GetLabel(id)
-	if err != nil {
-		l.SendInternalServerError(fmt.Errorf("failed to get label %d: %v", id, err))
-		return
-	}
-
-	if label == nil || label.Deleted {
-		l.SendNotFoundError(fmt.Errorf("label %d not found", id))
-		return
-	}
-
-	if !l.requireAccess(label, rbac.ActionList, rbac.ResourceLabelResource) {
-		return
-	}
-
-	/*
-		result, err := core.GlobalController.GetPolicies(rep_models.QueryParameter{})
-		if err != nil {
-			l.HandleInternalServerError(fmt.Sprintf("failed to get policies: %v", err))
-			return
-		}
-		policies := []*rep_models.ReplicationPolicy{}
-		if result != nil {
-			for _, policy := range result.Policies {
-				for _, filter := range policy.Filters {
-					if filter.Kind != replication.FilterItemKindLabel {
-						continue
-					}
-					if filter.Value.(int64) == label.ID {
-						policies = append(policies, policy)
-					}
-				}
-			}
-		}
-	*/
-	resources := map[string]interface{}{}
-	resources["replication_policies"] = nil
-	l.Data["json"] = resources
-	l.ServeJSON()
 }

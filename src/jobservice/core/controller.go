@@ -17,7 +17,7 @@ package core
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
+	"github.com/goharbor/harbor/src/lib/errors"
 	"github.com/robfig/cron"
 
 	"github.com/goharbor/harbor/src/jobservice/common/query"
@@ -135,7 +135,7 @@ func (bc *basicController) GetJobLogData(jobID string) ([]byte, error) {
 
 	logData, err := logger.Retrieve(jobID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error for getting log of job %s", jobID)
 	}
 
 	return logData, nil

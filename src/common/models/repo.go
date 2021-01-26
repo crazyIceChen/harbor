@@ -17,12 +17,14 @@ package models
 import (
 	"time"
 
-	"github.com/goharbor/harbor/src/common/utils/notary/model"
+	"github.com/goharbor/harbor/src/pkg/signature/notary/model"
 	"github.com/theupdateframework/notary/tuf/data"
 )
 
 // RepoTable is the table name for repository
 const RepoTable = "repository"
+
+// TODO move the model into pkg/repository
 
 // RepoRecord holds the record of an repository in DB, all the infors are from the registry notification event.
 type RepoRecord struct {
@@ -37,7 +39,7 @@ type RepoRecord struct {
 }
 
 // TableName is required by by beego orm to map RepoRecord to table repository
-func (rp *RepoRecord) TableName() string {
+func (r *RepoRecord) TableName() string {
 	return RepoTable
 }
 

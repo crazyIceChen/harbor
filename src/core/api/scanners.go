@@ -16,12 +16,15 @@ package api
 
 import (
 	"fmt"
+	"github.com/goharbor/harbor/src/common/rbac"
+	"github.com/goharbor/harbor/src/common/rbac/system"
+	"github.com/goharbor/harbor/src/pkg/permission/types"
 	"net/http"
 
-	"github.com/goharbor/harbor/src/pkg/q"
-	s "github.com/goharbor/harbor/src/pkg/scan/api/scanner"
+	s "github.com/goharbor/harbor/src/controller/scanner"
+	"github.com/goharbor/harbor/src/lib/errors"
+	"github.com/goharbor/harbor/src/lib/q"
 	"github.com/goharbor/harbor/src/pkg/scan/dao/scanner"
-	"github.com/pkg/errors"
 )
 
 // ScannerAPI provides the API for managing the plugin scanners
@@ -31,6 +34,8 @@ type ScannerAPI struct {
 
 	// Controller for the plug scanners
 	c s.Controller
+
+	resource types.Resource
 }
 
 // Prepare sth. for the subsequent actions
@@ -44,10 +49,7 @@ func (sa *ScannerAPI) Prepare() {
 		return
 	}
 
-	if !sa.SecurityCtx.IsSysAdmin() {
-		sa.SendForbiddenError(errors.New(sa.SecurityCtx.GetUsername()))
-		return
-	}
+	sa.resource = system.NewNamespace().Resource(rbac.ResourceScanner)
 
 	// Use the default controller
 	sa.c = s.DefaultController
@@ -55,6 +57,10 @@ func (sa *ScannerAPI) Prepare() {
 
 // Get the specified scanner
 func (sa *ScannerAPI) Get() {
+	if !sa.SecurityCtx.Can(sa.Context(), rbac.ActionRead, sa.resource) {
+		sa.SendForbiddenError(errors.New(sa.SecurityCtx.GetUsername()))
+		return
+	}
 	if r := sa.get(); r != nil {
 		// Response to the client
 		sa.Data["json"] = r
@@ -64,6 +70,10 @@ func (sa *ScannerAPI) Get() {
 
 // Metadata returns the metadata of the given scanner.
 func (sa *ScannerAPI) Metadata() {
+	if !sa.SecurityCtx.Can(sa.Context(), rbac.ActionRead, sa.resource) {
+		sa.SendForbiddenError(errors.New(sa.SecurityCtx.GetUsername()))
+		return
+	}
 	uuid := sa.GetStringFromPath(":uuid")
 
 	meta, err := sa.c.GetMetadata(uuid)
@@ -79,6 +89,10 @@ func (sa *ScannerAPI) Metadata() {
 
 // List all the scanners
 func (sa *ScannerAPI) List() {
+	if !sa.SecurityCtx.Can(sa.Context(), rbac.ActionList, sa.resource) {
+		sa.SendForbiddenError(errors.New(sa.SecurityCtx.GetUsername()))
+		return
+	}
 	p, pz, err := sa.GetPaginationParams()
 	if err != nil {
 		sa.SendBadRequestError(errors.Wrap(err, "scanner API: list all"))
@@ -117,6 +131,10 @@ func (sa *ScannerAPI) List() {
 
 // Create a new scanner
 func (sa *ScannerAPI) Create() {
+	if !sa.SecurityCtx.Can(sa.Context(), rbac.ActionCreate, sa.resource) {
+		sa.SendForbiddenError(errors.New(sa.SecurityCtx.GetUsername()))
+		return
+	}
 	r := &scanner.Registration{}
 
 	if err := sa.DecodeJSONReq(r); err != nil {
@@ -140,7 +158,7 @@ func (sa *ScannerAPI) Create() {
 
 	uuid, err := sa.c.CreateRegistration(r)
 	if err != nil {
-		sa.SendInternalServerError(errors.Wrap(err, "scanner API: create"))
+		sa.SendError(errors.Wrap(err, "scanner API: create"))
 		return
 	}
 
@@ -158,6 +176,10 @@ func (sa *ScannerAPI) Create() {
 
 // Update a scanner
 func (sa *ScannerAPI) Update() {
+	if !sa.SecurityCtx.Can(sa.Context(), rbac.ActionUpdate, sa.resource) {
+		sa.SendForbiddenError(errors.New(sa.SecurityCtx.GetUsername()))
+		return
+	}
 	r := sa.get()
 	if r == nil {
 		// meet error
@@ -213,6 +235,10 @@ func (sa *ScannerAPI) Update() {
 
 // Delete the scanner
 func (sa *ScannerAPI) Delete() {
+	if !sa.SecurityCtx.Can(sa.Context(), rbac.ActionDelete, sa.resource) {
+		sa.SendForbiddenError(errors.New(sa.SecurityCtx.GetUsername()))
+		return
+	}
 	r := sa.get()
 	if r == nil {
 		// meet error
@@ -237,6 +263,10 @@ func (sa *ScannerAPI) Delete() {
 
 // SetAsDefault sets the given registration as default one
 func (sa *ScannerAPI) SetAsDefault() {
+	if !sa.SecurityCtx.Can(sa.Context(), rbac.ActionCreate, sa.resource) {
+		sa.SendForbiddenError(errors.New(sa.SecurityCtx.GetUsername()))
+		return
+	}
 	uid := sa.GetStringFromPath(":uuid")
 
 	m := make(map[string]interface{})
@@ -261,6 +291,10 @@ func (sa *ScannerAPI) SetAsDefault() {
 
 // Ping the registration.
 func (sa *ScannerAPI) Ping() {
+	if !sa.SecurityCtx.Can(sa.Context(), rbac.ActionRead, sa.resource) {
+		sa.SendForbiddenError(errors.New(sa.SecurityCtx.GetUsername()))
+		return
+	}
 	r := &scanner.Registration{}
 
 	if err := sa.DecodeJSONReq(r); err != nil {

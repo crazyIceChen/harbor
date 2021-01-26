@@ -1,4 +1,4 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { MemberComponent } from './member.component';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
@@ -12,7 +12,7 @@ import { MessageHandlerService } from "../../shared/message-handler/message-hand
 import { ConfirmationDialogService } from "../../shared/confirmation-dialog/confirmation-dialog.service";
 import { SessionService } from "../../shared/session.service";
 import { MemberService } from "./member.service";
-import { AppConfigService } from "../../app-config.service";
+import { AppConfigService } from "../../services/app-config.service";
 import { of } from 'rxjs';
 import { OperationService } from "../../../lib/components/operation/operation.service";
 import { UserPermissionService } from "../../../lib/services";
@@ -79,7 +79,7 @@ describe('MemberComponent', () => {
       };
 
 
-    beforeEach(async(() => {
+    beforeEach(waitForAsync(() => {
         TestBed.configureTestingModule({
             schemas: [
                 CUSTOM_ELEMENTS_SCHEMA
